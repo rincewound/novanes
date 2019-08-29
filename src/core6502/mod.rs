@@ -196,14 +196,14 @@ impl Rico
 mod opcodetests 
 {
     use std::panic;
-    use crate::rico::memory::*;
-    use crate::rico;
+    use crate::core6502::memory::*;
+    use crate::core6502::*;
     
-    fn setup(opcode: u8) -> crate::rico::Rico
+    fn setup(opcode: u8) -> crate::core6502::Rico
     {
         let mut m = RawMemory::new(0x8000);
         m.write_byte(0x0000, opcode);
-        let mut r = crate::rico::Rico::new(Box::new(m));
+        let mut r = Rico::new(Box::new(m));
         r.s = 0x00;
         r
     }
@@ -230,7 +230,7 @@ mod opcodetests
         cpu.execute(1);
         assert_eq!(cpu.pc, 0x0002);
         assert_eq!(cpu.a, 54);
-        assert_eq!(cpu.status & rico::ZERO_MASK, 0);
+        assert_eq!(cpu.status & ZERO_MASK, 0);
     }
 
     #[test]
@@ -241,7 +241,7 @@ mod opcodetests
         cpu.a = 0;
         cpu.execute(1);
         assert_eq!(cpu.a, 0);
-        assert_eq!(cpu.status & rico::ZERO_MASK, rico::ZERO_MASK);
+        assert_eq!(cpu.status & ZERO_MASK, ZERO_MASK);
     }
 
     #[test]
@@ -252,7 +252,7 @@ mod opcodetests
         cpu.a = 2;
         cpu.execute(1);
         assert_eq!(cpu.a, 1);
-        assert_eq!(cpu.status & rico::CARRY_MASK, rico::CARRY_MASK);
+        assert_eq!(cpu.status & CARRY_MASK, CARRY_MASK);
     }
 
     #[test]
@@ -260,11 +260,11 @@ mod opcodetests
     {
         let mut cpu = setup(0x69);        
         cpu.mem.write_byte(0x0001, 0x1);
-        cpu.status = cpu.status | rico::CARRY_MASK;
+        cpu.status = cpu.status | CARRY_MASK;
         cpu.a = 1;
         cpu.execute(1);
         assert_eq!(cpu.a, 3);
-        assert_eq!(cpu.status & rico::CARRY_MASK, 0);
+        assert_eq!(cpu.status & CARRY_MASK, 0);
     }
 
     #[test]
@@ -362,7 +362,7 @@ mod opcodetests
        cpu.a = 27;
        cpu.execute(1);
        assert_eq!(cpu.a, 5);
-       assert_eq!(cpu.status & rico::CARRY_MASK, 0x00);
+       assert_eq!(cpu.status & CARRY_MASK, 0x00);
     }
 
     #[test]
@@ -373,6 +373,6 @@ mod opcodetests
         cpu.a = 22;
         cpu.execute(1);
         assert_eq!(cpu.a, 5);
-        assert_eq!(cpu.status & rico::CARRY_MASK, rico::CARRY_MASK);
+        assert_eq!(cpu.status & CARRY_MASK, CARRY_MASK);
     }
 }

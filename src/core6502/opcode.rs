@@ -1,12 +1,12 @@
 
-use crate::rico;
+use crate::core6502::*;
 
 use std::cell::RefCell;
 
 
 pub struct Opcode<'a>
 {
-    cpu: RefCell <&'a mut crate::rico::Rico>
+    cpu: RefCell <&'a mut crate::core6502::Rico>
 }
 
 pub enum RegisterName
@@ -74,7 +74,7 @@ impl<'a> LoadResult<'a>
         let mut tmpval : u16 = 0;
         {
             let mut cpu = self.origin.cpu.borrow_mut();
-            if cpu.status & rico::CARRY_MASK == rico::CARRY_MASK
+            if cpu.status & CARRY_MASK == CARRY_MASK
             {
                 tmpval += 1;
             }
@@ -84,8 +84,8 @@ impl<'a> LoadResult<'a>
             cpu.a = aval as u8;                 
         }
 
-        self.toggle_cpu_bit(rico::ZERO_MASK, (tmpval & 0xFF) == 0);
-        self.toggle_cpu_bit(rico::CARRY_MASK, tmpval > 255);   
+        self.toggle_cpu_bit(ZERO_MASK, (tmpval & 0xFF) == 0);
+        self.toggle_cpu_bit(CARRY_MASK, tmpval > 255);   
 
         self.origin
     }
@@ -100,7 +100,7 @@ impl<'a> LoadResult<'a>
 
             tmpval += cpu.a as i16 - self.val as i16;
 
-            if cpu.status & rico::CARRY_MASK == rico::CARRY_MASK
+            if cpu.status & CARRY_MASK == CARRY_MASK
             {
                 tmpval |= 0x80;
             }
@@ -116,8 +116,8 @@ impl<'a> LoadResult<'a>
             cpu.a = aval as u8;                 
         }
 
-        self.toggle_cpu_bit(rico::ZERO_MASK, (tmpval & 0xFF) == 0);
-        self.toggle_cpu_bit(rico::CARRY_MASK, set_carry);   
+        self.toggle_cpu_bit(ZERO_MASK, (tmpval & 0xFF) == 0);
+        self.toggle_cpu_bit(CARRY_MASK, set_carry);   
 
         self.origin
     }
@@ -130,7 +130,7 @@ impl<'a> LoadResult<'a>
             result = cpu.a ^ self.val as u8;
             cpu.a = result;            
         }
-        self.toggle_cpu_bit(rico::ZERO_MASK, result == 0);
+        self.toggle_cpu_bit(ZERO_MASK, result == 0);
         self.origin
     }
 
@@ -142,7 +142,7 @@ impl<'a> LoadResult<'a>
             result = cpu.a | self.val as u8;
             cpu.a = result;            
         }
-        self.toggle_cpu_bit(rico::ZERO_MASK, result == 0);
+        self.toggle_cpu_bit(ZERO_MASK, result == 0);
         self.origin
     }
 
@@ -154,14 +154,14 @@ impl<'a> LoadResult<'a>
             result = cpu.a & self.val as u8;
             cpu.a = result;            
         }
-        self.toggle_cpu_bit(rico::ZERO_MASK, result == 0);
+        self.toggle_cpu_bit(ZERO_MASK, result == 0);
         self.origin
     }
 }
 
 impl<'a> Opcode<'a>
 {
-    pub fn new(cpu:  RefCell <&'a mut crate::rico::Rico>) -> Self
+    pub fn new(cpu:  RefCell <&'a mut crate::core6502::Rico>) -> Self
     {
         Opcode{cpu: cpu}
     }
@@ -308,7 +308,7 @@ impl<'a> Opcode<'a>
 
 }
 
-pub fn opcode(cpu: RefCell <&mut crate::rico::Rico>) -> Opcode
+pub fn opcode(cpu: RefCell <&mut crate::core6502::Rico>) -> Opcode
 {
     Opcode::new(cpu)
 }
@@ -318,9 +318,9 @@ pub fn opcode(cpu: RefCell <&mut crate::rico::Rico>) -> Opcode
 mod load_result_tests 
 {
 
-    use crate::rico::memory::*;
-    use crate::rico::*;
-    use crate::rico::opcode::*;
+    use crate::core6502::memory::*;
+    use crate::core6502::*;
+    use crate::core6502::opcode::*;
     use std::panic;
 
     pub fn run_test<T>(val: u8, test: T) -> () 
@@ -354,7 +354,7 @@ mod load_result_tests
         {
             lr.origin.cpu.borrow_mut().a = 0x01;
             let oc = lr.xor_with_accumulator();
-            assert_eq!(oc.cpu.borrow().status & rico::ZERO_MASK, rico::ZERO_MASK);
+            assert_eq!(oc.cpu.borrow().status & ZERO_MASK, ZERO_MASK);
         })
     }
 
@@ -376,7 +376,7 @@ mod load_result_tests
         {
             lr.origin.cpu.borrow_mut().a = 0b0;
             let oc = lr.or_with_accumulator();
-            assert_eq!(oc.cpu.borrow().status & rico::ZERO_MASK, rico::ZERO_MASK);
+            assert_eq!(oc.cpu.borrow().status & ZERO_MASK, ZERO_MASK);
         })
     }
 

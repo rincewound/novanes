@@ -1,8 +1,8 @@
-mod rico;
+mod core6502;
 
 fn main() {
-    let m = rico::memory::RawMemory::new(0x8000);
-    let mut core = rico::Rico::new(Box::new(m));
+    let m = core6502::memory::RawMemory::new(0x8000);
+    let mut core = core6502::Rico::new(Box::new(m));
 
     loop
     {
