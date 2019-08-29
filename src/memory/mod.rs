@@ -1,6 +1,7 @@
 
 #[derive(Debug, PartialEq)]
-pub enum MemError{
+pub enum MemError
+{
     Ok,
     BadAddress
 }

@@ -317,8 +317,6 @@ pub fn opcode(cpu: RefCell <&mut crate::core6502::Rico>) -> Opcode
 #[cfg(test)]
 mod load_result_tests 
 {
-
-    use crate::core6502::memory::*;
     use crate::core6502::*;
     use crate::core6502::opcode::*;
     use std::panic;

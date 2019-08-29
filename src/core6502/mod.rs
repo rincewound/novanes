@@ -2,9 +2,10 @@
 
 use std::cell::RefCell;
 
-pub mod memory;
+
 mod opcode;
 
+use super::memory::*;
 use opcode::*;
 
 pub const CARRY_MASK: u8 = 0x01;
@@ -23,7 +24,7 @@ struct OpCodeImpl
 
 pub struct Rico
 {
-    mem: Box<dyn memory::Memory>,
+    mem: Box<dyn Memory>,
 
     a: u8,          // Accumulator
     x: u8,
@@ -39,7 +40,7 @@ pub struct Rico
 
 impl Rico
 {
-    pub fn new (mut mem: Box<dyn memory::Memory> ) -> Self
+    pub fn new (mut mem: Box<dyn Memory> ) -> Self
     {
         for i in 0x4000..0x400F
         {
@@ -66,7 +67,7 @@ impl Rico
         }
     }
 
-    pub fn get_memory(&self) -> &Box<dyn memory::Memory>
+    pub fn get_memory(&self) -> &Box<dyn Memory>
     {
         &self.mem
     }
@@ -196,7 +197,7 @@ impl Rico
 mod opcodetests 
 {
     use std::panic;
-    use crate::core6502::memory::*;
+    //use super::memory::*;
     use crate::core6502::*;
     
     fn setup(opcode: u8) -> crate::core6502::Rico
