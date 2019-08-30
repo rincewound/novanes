@@ -179,7 +179,45 @@ impl Rico
                                     .subtracts_from_accumulator()
                                     .increments_pc(2)
                                     .uses_cycles(2)},
-            
+
+
+            // Transfer instructions:
+            0xAA => {opcode(rc_self).has_mnemonic("TAX".to_string())
+                                    .loads_register_u8(RegisterName::A)
+                                    .to(RegisterName::X)
+                                    .increments_pc(1)
+                                    .uses_cycles(2)},
+
+            0xA8 => {opcode(rc_self).has_mnemonic("TAY".to_string())
+                                    .loads_register_u8(RegisterName::A)
+                                    .to(RegisterName::Y)
+                                    .increments_pc(1)
+                                    .uses_cycles(2)},
+
+            0x8A => {opcode(rc_self).has_mnemonic("TXA".to_string())
+                        .loads_register_u8(RegisterName::X)
+                        .to(RegisterName::A)
+                        .increments_pc(1)
+                        .uses_cycles(2)}, 
+
+            0x98 => {opcode(rc_self).has_mnemonic("TYA".to_string())
+                        .loads_register_u8(RegisterName::Y)
+                        .to(RegisterName::A)
+                        .increments_pc(1)
+                        .uses_cycles(2)},         
+
+
+            0xBA => {opcode(rc_self).has_mnemonic("TSX".to_string())
+                        .loads_register_u8(RegisterName::S)
+                        .to(RegisterName::X)
+                        .increments_pc(1)
+                        .uses_cycles(2)},         
+
+            0x9A => {opcode(rc_self).has_mnemonic("TXS".to_string())
+                        .loads_register_u8(RegisterName::X)
+                        .to(RegisterName::S)
+                        .increments_pc(1)
+                        .uses_cycles(2)},  
 
             x => {
                     let e = format!("Encountered bad opcode {:#04x} at {:#06x}", x, pc);
@@ -375,5 +413,59 @@ mod opcodetests
         cpu.execute(1);
         assert_eq!(cpu.a, 5);
         assert_eq!(cpu.status & CARRY_MASK, CARRY_MASK);
+    }
+
+    #[test]
+    fn tax_works_as_intended()
+    {
+         let mut cpu = setup(0xAA); 
+        cpu.a = 22;
+        cpu.execute(1);
+        assert_eq!(cpu.x, 22);
+    }
+
+    #[test]
+    fn tay_works_as_intended()
+    {
+         let mut cpu = setup(0xA8); 
+        cpu.a = 27;
+        cpu.execute(1);
+        assert_eq!(cpu.y, 27);
+    }
+
+    #[test]
+    fn txa_works_as_intended()
+    {
+         let mut cpu = setup(0x8A); 
+        cpu.x = 45;
+        cpu.execute(1);
+        assert_eq!(cpu.a, 45);
+    }
+
+    #[test]
+    fn tya_works_as_intended()
+    {
+         let mut cpu = setup(0x98); 
+        cpu.y = 7;
+        cpu.execute(1);
+        assert_eq!(cpu.a, 7);
+    }
+
+    #[test]
+    fn tsx_works_as_intended()
+    {
+         let mut cpu = setup(0xBA); 
+        cpu.s = 37;
+        cpu.execute(1);
+        assert_eq!(cpu.x, 37);
+    }
+
+    #[test]
+    fn txs_works_as_intended()
+    {
+         let mut cpu = setup(0x9A); 
+        cpu.x = 51;
+        cpu.execute(1);
+        assert_eq!(cpu.s, 51);
     }
 }

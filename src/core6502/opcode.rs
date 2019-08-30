@@ -45,6 +45,7 @@ impl<'a> LoadResult<'a>
 
     pub fn to(self, target: RegisterName) -> Opcode<'a>
     {
+        // ToDo: this method might need to adjust status registers!
         match target{
             RegisterName::A => self.origin.cpu.borrow_mut().a = self.val as u8,
             RegisterName::X => self.origin.cpu.borrow_mut().x = self.val as u8,
@@ -217,6 +218,7 @@ impl<'a> Opcode<'a>
             RegisterName::A => self.cpu.borrow().a,
             RegisterName::X => self.cpu.borrow().x,
             RegisterName::Y => self.cpu.borrow().y,
+            RegisterName::S => self.cpu.borrow().s,
             RegisterName::Status => self.cpu.borrow().status,
             _ => panic!("cannot read this register as 8 bit value")
         }
@@ -225,6 +227,12 @@ impl<'a> Opcode<'a>
     fn read_pc(&self) -> u16
     {
         self.cpu.borrow().pc
+    }
+
+    pub fn loads_register_u8(self, reg_name: RegisterName) -> LoadResult<'a>
+    {
+        let reg_val = self.read_register(reg_name);
+        LoadResult::new8(reg_val, self)
     }
 
     pub fn loads_immediate(self) -> LoadResult<'a>
