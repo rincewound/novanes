@@ -44,7 +44,8 @@ impl Memory for CompositeMemory
         let m = it.find(|x| x.range.begin <= address && x.range.end >= address);
 
         if let Some(m) = m {
-            return m.handler.read_byte(address);
+            let rangestart = m.range.begin;
+            return m.handler.read_byte(address - rangestart);
         }
         Err(MemError::BadAddress)    
     }

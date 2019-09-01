@@ -368,6 +368,21 @@ impl<'a> Opcode<'a>
         StoreCommand::new8(val, self)
     }
 
+    pub fn toggles_cpu_bit(self, bit: u8, newval: bool)-> Opcode<'a>
+    {
+        {
+            let mut cpu = self.cpu.borrow_mut();
+            if newval
+            {
+                cpu.status |= bit;
+            }
+            else
+            {
+                cpu.status = cpu.status & !bit;
+            }
+        }
+        self
+    }
 }
 
 pub fn opcode(cpu: RefCell <&mut crate::core6502::Rico>) -> Opcode

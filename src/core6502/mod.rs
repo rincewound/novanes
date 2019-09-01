@@ -58,7 +58,7 @@ impl Rico
             a: 0,
             x: 0,
             y: 0,
-            pc: 0,
+            pc: 0x8000,     // Check docs, this is the start of the cartridge.
             s: 0xFD,
             status: 0x34, // IRQ disabled,
             previouspc: 0x00,
@@ -82,10 +82,16 @@ impl Rico
             match opcode
             {
                 Ok(x) => {
-                    self.last_opcode = x;
-                    self.previouspc = self.pc;
+                    
+                    let dummypc = self.pc;
+                    
                     // dispatch opcode
                     let cylces_taken = self.dispatch_opcode(x);
+                    
+                    self.previouspc = dummypc;
+                    self.last_opcode = x;
+                    
+
                     // increase cyclecount -> dispatch tells us how
                     // many cylces it needed. Note that dispatch opcode
                     // *must* modify PC itself, after the opcode
@@ -110,7 +116,7 @@ impl Rico
         println!("  .S(tack): {:#2x}", self.s);
         println!("  .Stat:    {:#2x}", self.status);
         println!("  .PrevPc:  {:#2x}", self.previouspc);
-        println!("  .LastOp:  {}"    , self.last_opcode_nmonic);
+        println!("  .LastOp:  {}({:#2x})"    , self.last_opcode_nmonic, self.last_opcode);
     }
 
     fn dispatch_opcode(&mut self, oc: u8) -> u16
@@ -122,6 +128,11 @@ impl Rico
             0x00 => { opcode(rc_self).has_mnemonic("NOP".to_string())
                                      .increments_pc(1)
                                      .uses_cycles(1) },
+
+            0x78 => {opcode(rc_self).has_mnemonic("SEI".to_string())
+                                    .toggles_cpu_bit(IRQ_DISABLE_MASK, true)
+                                    .increments_pc(1)
+                                    .uses_cycles(2)},
 
             // ADC ------------------------------------------------------            
             0x69 => { opcode(rc_self).has_mnemonic("ADC#".to_string())
@@ -219,9 +230,11 @@ impl Rico
                         .increments_pc(1)
                         .uses_cycles(2)},  
 
-            x => {
+            x => {                    
                     let e = format!("Encountered bad opcode {:#04x} at {:#06x}", x, pc);
                     //self.print_cpu_state();
+                    println!("{}", e);
+                    rc_self.borrow().print_cpu_state();
                     panic!(e)
                 }
         }
@@ -243,6 +256,7 @@ mod opcodetests
         let mut m = RawMemory::new(0x8000);
         m.write_byte(0x0000, opcode);
         let mut r = Rico::new(Box::new(m));
+        r.pc = 0x00;
         r.s = 0x00;
         r
     }
@@ -463,9 +477,17 @@ mod opcodetests
     #[test]
     fn txs_works_as_intended()
     {
-         let mut cpu = setup(0x9A); 
+        let mut cpu = setup(0x9A); 
         cpu.x = 51;
         cpu.execute(1);
         assert_eq!(cpu.s, 51);
+    }
+
+    #[test]
+    fn sei_sets_irq_disble_flag()
+    {
+        let mut cpu = setup(0x78); 
+        cpu.execute(1);
+        assert_eq!(cpu.status & IRQ_DISABLE_MASK, IRQ_DISABLE_MASK);
     }
 }
