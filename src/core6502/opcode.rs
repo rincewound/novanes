@@ -25,6 +25,7 @@ pub struct LoadResult<'a>
     origin: Opcode<'a>
 }
 
+
 impl<'a> LoadResult<'a>
 { 
     pub fn new16(value: u16, source: Opcode<'a>) -> Self
@@ -159,6 +160,53 @@ impl<'a> LoadResult<'a>
         self.origin
     }
 }
+
+pub struct StoreCommand<'a>
+{
+    val: u16,
+    origin: Opcode<'a>
+}
+impl<'a> StoreCommand<'a>
+{ 
+    pub fn new16(value: u16, source: Opcode<'a>) -> Self
+    {
+        StoreCommand
+            {
+                val : value,
+                origin : source
+            }
+    }
+
+    pub fn new8(value: u8, source: Opcode<'a>) -> Self
+    {
+        StoreCommand
+            {
+                val : value as u16,
+                origin : source
+            }
+    }
+
+    pub fn to_immediate_address(self) -> Opcode<'a>
+    {
+        self.origin
+    }
+
+    pub fn to_immediate_address_with_offset(self) -> Opcode<'a>
+    {
+        self.origin
+    }
+
+    pub fn to_zeropage(self) -> Opcode<'a>
+    {
+        self.origin
+    }
+
+    pub fn to_zeropage_with_offset(self) -> Opcode<'a>
+    {
+        self.origin
+    }
+}
+
 
 impl<'a> Opcode<'a>
 {
@@ -312,6 +360,12 @@ impl<'a> Opcode<'a>
         let pc = self.read_pc();             
         let load_adr_base = self.load_u16(pc + 1) + yval;
         self.load_u8_from_mem(load_adr_base)
+    }
+
+    pub fn stores(self, source: RegisterName) -> StoreCommand<'a>
+    {
+        let val = self.read_register(source);
+        StoreCommand::new8(val, self)
     }
 
 }
