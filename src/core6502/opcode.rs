@@ -166,6 +166,7 @@ pub struct StoreCommand<'a>
     val: u16,
     origin: Opcode<'a>
 }
+
 impl<'a> StoreCommand<'a>
 { 
     pub fn new16(value: u16, source: Opcode<'a>) -> Self
@@ -187,7 +188,12 @@ impl<'a> StoreCommand<'a>
     }
 
     pub fn to_immediate_address(self) -> Opcode<'a>
-    {
+    {        
+        {
+        let mut cpu = self.origin.cpu.borrow_mut();
+        let adr = cpu.mem.read_u16((cpu.pc + 1) as usize).unwrap() as usize;
+        cpu.mem.write_byte(adr, self.val as u8);
+        }
         self.origin
     }
 
@@ -235,10 +241,7 @@ impl<'a> Opcode<'a>
     fn load_u16(&self, adr: u16) -> u16
     {
         let cpu = self.cpu.borrow();
-        let hi: u16 = cpu.mem.read_byte(adr as usize).unwrap() as u16;
-        let lo: u16 = cpu.mem.read_byte((adr + 1) as usize).unwrap() as u16;
-        let res = lo | (hi << 8);
-        res
+        cpu.mem.read_u16(adr as usize).unwrap()
     }
 
     fn fetch_u8(&self, adr: u16) -> u8
@@ -388,6 +391,52 @@ impl<'a> Opcode<'a>
 pub fn opcode(cpu: RefCell <&mut crate::core6502::Rico>) -> Opcode
 {
     Opcode::new(cpu)
+}
+
+#[cfg(test)]
+mod store_command_tests
+{
+    use crate::core6502::*;
+    use crate::core6502::opcode::*;
+    use std::panic;  
+
+    pub fn run_test<T>(val: u8, test: T) -> () 
+        where T: FnOnce(StoreCommand) -> () + panic::UnwindSafe
+    {
+        let result = panic::catch_unwind(|| {
+            let mem = RawMemory::new(0x10000);
+            let mut cpu = Rico::new(Box::new(mem));
+            let oc = opcode(RefCell::new(&mut cpu));
+            let sc = StoreCommand::new8(val, oc);
+            test(sc)
+        });
+        assert!(result.is_ok())
+    } 
+
+    fn CheckHasValAt(sr: &Opcode, adr: usize, val: u8)
+    {
+        let result = sr.cpu.borrow().mem.read_byte(0x1020);
+
+        match result
+        {
+            Ok(v) => assert_eq!(v, val),
+            Err(e) => assert_eq!(true, false)
+        }
+    }
+
+    #[test]
+    pub fn store_to_immediate_adress_works()
+    {
+        run_test(0xAB, |sr|
+        {
+            sr.origin.cpu.borrow_mut().mem.write_byte(0x8001, 0x10);
+            sr.origin.cpu.borrow_mut().mem.write_byte(0x8002, 0x20);
+            let oc = sr.to_immediate_address();
+            CheckHasValAt(&oc, 0x1020, 0xAB)            
+        })
+    }
+
+
 }
 
 

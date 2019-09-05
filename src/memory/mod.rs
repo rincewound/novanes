@@ -10,6 +10,26 @@ pub trait Memory
 {
     fn read_byte(&self, address: usize) -> Result<u8, MemError>;
     fn write_byte(&mut self, address: usize, data: u8) -> MemError;
+    fn read_u16(&self, address: usize) -> Result<u16, MemError>
+    {
+        let hi = self.read_byte(address);
+        let lo = self.read_byte(address + 1);
+
+        match hi
+        {
+            Ok(v) => {
+                match lo 
+                {
+                    Ok(v2) => Ok((v2 as u16) | ((v as u16) << 8) ),
+                    _ => Err(MemError::BadAddress)
+                }            
+            },
+            _ => Err(MemError::BadAddress)
+        }
+
+        //let res = lo | (hi << 8);
+        //res
+    }
 }
 
 pub struct RawMemory

@@ -191,6 +191,12 @@ impl Rico
                                     .increments_pc(2)
                                     .uses_cycles(2)},
 
+            0xA9 => { opcode(rc_self).has_mnemonic("LDA #$nn".to_string())
+                                    .loads_immediate()
+                                    .to(RegisterName::A)
+                                    .increments_pc(2)
+                                    .uses_cycles(2)},
+
 
             // Transfer instructions:
             0xAA => {opcode(rc_self).has_mnemonic("TAX".to_string())
@@ -229,6 +235,23 @@ impl Rico
                         .to(RegisterName::S)
                         .increments_pc(1)
                         .uses_cycles(2)},  
+            
+            0xD8 => {opcode(rc_self).has_mnemonic("CLD".to_string())
+                        .toggles_cpu_bit(DEC_MODE, false)
+                        .increments_pc(1)
+                        .uses_cycles(2)},  
+
+            0x8D => {opcode(rc_self).has_mnemonic("STA $hhll".to_string())
+                        .stores(RegisterName::A)
+                        .to_immediate_address()
+                        .increments_pc(3)
+                        .uses_cycles(4)}
+
+            0xA2 => {opcode(rc_self).has_mnemonic("LDX #$nn".to_string())
+                        .loads_immediate()
+                        .to(RegisterName::X)
+                        .increments_pc(2)
+                        .uses_cycles(2)}
 
             x => {                    
                     let e = format!("Encountered bad opcode {:#04x} at {:#06x}", x, pc);
@@ -432,7 +455,7 @@ mod opcodetests
     #[test]
     fn tax_works_as_intended()
     {
-         let mut cpu = setup(0xAA); 
+        let mut cpu = setup(0xAA); 
         cpu.a = 22;
         cpu.execute(1);
         assert_eq!(cpu.x, 22);
@@ -441,7 +464,7 @@ mod opcodetests
     #[test]
     fn tay_works_as_intended()
     {
-         let mut cpu = setup(0xA8); 
+        let mut cpu = setup(0xA8); 
         cpu.a = 27;
         cpu.execute(1);
         assert_eq!(cpu.y, 27);
@@ -459,7 +482,7 @@ mod opcodetests
     #[test]
     fn tya_works_as_intended()
     {
-         let mut cpu = setup(0x98); 
+        let mut cpu = setup(0x98); 
         cpu.y = 7;
         cpu.execute(1);
         assert_eq!(cpu.a, 7);
@@ -468,7 +491,7 @@ mod opcodetests
     #[test]
     fn tsx_works_as_intended()
     {
-         let mut cpu = setup(0xBA); 
+        let mut cpu = setup(0xBA); 
         cpu.s = 37;
         cpu.execute(1);
         assert_eq!(cpu.x, 37);
@@ -489,5 +512,22 @@ mod opcodetests
         let mut cpu = setup(0x78); 
         cpu.execute(1);
         assert_eq!(cpu.status & IRQ_DISABLE_MASK, IRQ_DISABLE_MASK);
+    }
+
+    #[test]
+    fn cld_clears_decimal_flag()
+    {
+        let mut cpu = setup(0xd8); 
+        cpu.execute(1);
+        assert_eq!(cpu.status & DEC_MODE, 0x00);        
+    }
+
+    #[test]
+    fn lda_loads_accumulator()
+    {
+        let mut cpu = setup(0xa9);
+        cpu.mem.write_byte(0x0001, 0x10);
+        cpu.execute(1);
+        assert_eq!(cpu.a, 0x10);
     }
 }
