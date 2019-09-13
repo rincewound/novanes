@@ -92,6 +92,21 @@ impl<'a> LoadResult<'a>
         self.origin
     }
 
+    pub fn jumps_relative_if_statusbit(self, statusbit: u8, val: bool) -> Opcode<'a>
+    {
+        {
+            let mut cpu = self.origin.cpu.borrow_mut();
+            let isBitSet = (cpu.status & statusbit) != 0;
+
+            if(isBitSet == val)
+            {
+                cpu.pc = self.val;
+            }
+        }
+
+        self.origin
+    }
+
     pub fn subtracts_from_accumulator(self) -> Opcode<'a>
     {
         let mut tmpval : i16 = 0;
@@ -261,7 +276,8 @@ impl<'a> Opcode<'a>
             Err(_) => 
             {
                 self.cpu.borrow().print_cpu_state();
-                panic!("access violation {:#4x}", pc + 1)
+                println!("access violation at pc {:#4x}", pc + 1);
+                panic!("failed to read from {:#4x}", adr);
             }
         }  
     }
@@ -297,6 +313,16 @@ impl<'a> Opcode<'a>
             load_adr = self.cpu.borrow().pc + 1;
         }
         self.load_u8_from_mem(load_adr)      
+    }
+
+    pub fn loads_immediate_16bit(self) -> LoadResult<'a>
+    {
+        let load_adr: u16;
+        {
+            load_adr = self.cpu.borrow().pc + 1;
+        }
+        let loadVal = self.load_u16(load_adr);
+        LoadResult::new16(loadVal, self) 
     }
 
     pub fn loads_indirect(self, offset: u8) -> LoadResult<'a>

@@ -128,6 +128,11 @@ impl Rico
             0x00 => { opcode(rc_self).has_mnemonic("NOP".to_string())
                                      .increments_pc(1)
                                      .uses_cycles(1) },
+            0x10 => { opcode(rc_self).has_mnemonic("BPL".to_string())
+                                     .loads_immediate_16bit()
+                                     .jumps_relative_if_statusbit(NEG_MASK, true)
+                                     .increments_pc(2)
+                                     .uses_cycles(2) },
 
             0x78 => {opcode(rc_self).has_mnemonic("SEI".to_string())
                                     .toggles_cpu_bit(IRQ_DISABLE_MASK, true)
@@ -200,8 +205,8 @@ impl Rico
             0xAD => { opcode(rc_self).has_mnemonic("LDA $hhll".to_string())
                                     .loads_indirect(0)
                                     .to(RegisterName::A)
-                                    .increments_pc(2)
-                                    .uses_cycles(2)},
+                                    .increments_pc(3)
+                                    .uses_cycles(4)},
 
 
             // Transfer instructions:
@@ -256,6 +261,12 @@ impl Rico
             0xA2 => {opcode(rc_self).has_mnemonic("LDX #$nn".to_string())
                         .loads_immediate()
                         .to(RegisterName::X)
+                        .increments_pc(2)
+                        .uses_cycles(2)}
+            
+            0xA0 => {opcode(rc_self).has_mnemonic("LDY #$nn".to_string())
+                        .loads_immediate()
+                        .to(RegisterName::Y)
                         .increments_pc(2)
                         .uses_cycles(2)}
 
@@ -535,5 +546,23 @@ mod opcodetests
         cpu.mem.write_byte(0x0001, 0x10);
         cpu.execute(1);
         assert_eq!(cpu.a, 0x10);
+    }
+
+    #[test]
+    fn ldx_loads_x_reg()
+    {
+        let mut cpu = setup(0xa2);
+        cpu.mem.write_byte(0x0001, 0x10);
+        cpu.execute(1);
+        assert_eq!(cpu.x, 0x10);       
+    }
+
+    #[test]
+    fn ldx_loads_y_reg()
+    {
+        let mut cpu = setup(0xa0);
+        cpu.mem.write_byte(0x0001, 0x10);
+        cpu.execute(1);
+        assert_eq!(cpu.y, 0x10);       
     }
 }

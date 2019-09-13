@@ -55,10 +55,15 @@ fn load_rom(romfile: String, targetMemory: &mut dyn memory::Memory)
 }
 
 fn main() {
+    let mut lowMem = memory::RawMemory::new(0x7FFF);
     let mut m = memory::RawMemory::new(0x8000);
+    let mut memmap = memory::CompositeMemory::new();
+    
+    // ToDo: Add peripherals as ranges as well.
+    memmap.register_range(0x0000, 0x7FFF, Box::new(lowMem));
+    memmap.register_range(0x8000, 0x8000 + 0x8000, Box::new(m));
 
-
-    let mut core = core6502::Rico::new(Box::new(m));
+    let mut core = core6502::Rico::new(Box::new(memmap));
 
     loop
     {
