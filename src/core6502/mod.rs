@@ -197,6 +197,12 @@ impl Rico
                                     .increments_pc(2)
                                     .uses_cycles(2)},
 
+            0xAD => { opcode(rc_self).has_mnemonic("LDA $hhll".to_string())
+                                    .loads_indirect(0)
+                                    .to(RegisterName::A)
+                                    .increments_pc(2)
+                                    .uses_cycles(2)},
+
 
             // Transfer instructions:
             0xAA => {opcode(rc_self).has_mnemonic("TAX".to_string())
@@ -347,8 +353,8 @@ mod opcodetests
     fn adc_ind_works_as_intended()
     {
         let mut cpu = setup(0x6D);
-        cpu.mem.write_byte(0x0001, 0x7E);
-        cpu.mem.write_byte(0x0002, 0xCD);
+        cpu.mem.write_byte(0x0001, 0xCD);
+        cpu.mem.write_byte(0x0002, 0x7E);
         cpu.mem.write_byte(0x7ECD, 0xAE);
         cpu.execute(1);
         assert_eq!(cpu.a, 0xAE);        
@@ -358,8 +364,8 @@ mod opcodetests
     fn adc_ind_indexed_x_works_as_intended()
     {
         let mut cpu = setup(0x7D);
-        cpu.mem.write_byte(0x0001, 0x7E);
-        cpu.mem.write_byte(0x0002, 0xCD);
+        cpu.mem.write_byte(0x0001, 0xCD);
+        cpu.mem.write_byte(0x0002, 0x7E);
         cpu.mem.write_byte(0x7ECD + 0x20, 0xAE);
         cpu.x = 0x20;
         cpu.execute(1);
@@ -370,8 +376,8 @@ mod opcodetests
     fn adc_ind_indexed_y_works_as_intended()
     {
         let mut cpu = setup(0x79);
-        cpu.mem.write_byte(0x0001, 0x7E);
-        cpu.mem.write_byte(0x0002, 0xCD);
+        cpu.mem.write_byte(0x0001, 0xCD);
+        cpu.mem.write_byte(0x0002, 0x7E);
         cpu.mem.write_byte(0x7ECD + 0x40, 0xAE);
         cpu.y = 0x40;
         cpu.execute(1);
@@ -406,8 +412,8 @@ mod opcodetests
     {
         let mut cpu = setup(0x61);
         cpu.mem.write_byte(0x0001, 0x09);
-        cpu.mem.write_byte(0x000A, 0x0F);   // adr hi
-        cpu.mem.write_byte(0x000B, 0xAB);   // adr lo
+        cpu.mem.write_byte(0x000A, 0xAB);   // adr hi
+        cpu.mem.write_byte(0x000B, 0x0F);   // adr lo
         cpu.mem.write_byte(0x0FAB, 0x20);   // adr lo
         cpu.x = 0x01;
         cpu.a = 0x20;
@@ -419,8 +425,8 @@ mod opcodetests
     fn adc_indirect_y_postindexed_works_as_intended()
     {
         let mut cpu = setup(0x71);
-        cpu.mem.write_byte(0x0001, 0x09);
-        cpu.mem.write_byte(0x0002, 0x10);   
+        cpu.mem.write_byte(0x0001, 0x10);
+        cpu.mem.write_byte(0x0002, 0x09);   
         cpu.mem.write_byte(0x0930, 0xAB);
         cpu.y = 0x20;
         cpu.a = 0x10;

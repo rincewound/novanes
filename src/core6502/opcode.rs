@@ -258,7 +258,11 @@ impl<'a> Opcode<'a>
         match result
         {
             Ok(val) => LoadResult::new8(val, self),
-            Err(_) => panic!("access violation {:#4x}", pc + 1)
+            Err(_) => 
+            {
+                self.cpu.borrow().print_cpu_state();
+                panic!("access violation {:#4x}", pc + 1)
+            }
         }  
     }
 
@@ -429,8 +433,8 @@ mod store_command_tests
     {
         run_test(0xAB, |sr|
         {
-            sr.origin.cpu.borrow_mut().mem.write_byte(0x8001, 0x10);
-            sr.origin.cpu.borrow_mut().mem.write_byte(0x8002, 0x20);
+            sr.origin.cpu.borrow_mut().mem.write_byte(0x8001, 0x20);
+            sr.origin.cpu.borrow_mut().mem.write_byte(0x8002, 0x10);
             let oc = sr.to_immediate_address();
             CheckHasValAt(&oc, 0x1020, 0xAB)            
         })

@@ -20,7 +20,7 @@ pub trait Memory
             Ok(v) => {
                 match lo 
                 {
-                    Ok(v2) => Ok((v2 as u16) | ((v as u16) << 8) ),
+                    Ok(v2) => Ok((v as u16) | ((v2 as u16) << 8) ),
                     _ => Err(MemError::BadAddress)
                 }            
             },
@@ -83,7 +83,7 @@ impl Memory for CompositeMemory
             return m.handler.write_byte(address, data);
         }
 
-        let err = format!("{:x} -> Bad Addr", address);
+        let err = format!("Memory.WriteByte: {:x} -> Bad Addr", address);
         println!("{}", err);
         MemError::BadAddress
     }
