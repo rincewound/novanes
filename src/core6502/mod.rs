@@ -84,6 +84,12 @@ impl Rico
                 Ok(x) => {
                     
                     let dummypc = self.pc;
+
+                    let breakAdr = 0x800A;
+                    if self.pc == 0x800A
+                    {
+                        println!("Breakpoint hit.");
+                    }
                     
                     // dispatch opcode
                     let cylces_taken = self.dispatch_opcode(x);
@@ -106,7 +112,7 @@ impl Rico
         }    
     }
 
-    fn print_cpu_state(&self)
+    pub fn print_cpu_state(&self)
     {
         println!("With:");
         println!("  .X:       {:#2x}", self.x);
@@ -116,7 +122,8 @@ impl Rico
         println!("  .S(tack): {:#2x}", self.s);
         println!("  .Stat:    {:#2x}", self.status);
         println!("  .PrevPc:  {:#2x}", self.previouspc);
-        println!("  .LastOp:  {}({:#2x})"    , self.last_opcode_nmonic, self.last_opcode);
+        println!("  .CurrentOp:  {}"    , self.last_opcode_nmonic);
+        println!("  .Last Successful op:{:#2x})"    , self.last_opcode);
     }
 
     fn dispatch_opcode(&mut self, oc: u8) -> u16
@@ -131,6 +138,12 @@ impl Rico
             0x10 => { opcode(rc_self).has_mnemonic("BPL".to_string())
                                      .loads_immediate_16bit()
                                      .jumps_relative_if_statusbit(NEG_MASK, true)
+                                     .increments_pc(2)
+                                     .uses_cycles(2) },
+            
+            0xB0 => { opcode(rc_self).has_mnemonic("BCS".to_string())
+                                     .loads_immediate_16bit()
+                                     .jumps_relative_if_statusbit(CARRY_MASK, true)
                                      .increments_pc(2)
                                      .uses_cycles(2) },
 
@@ -239,7 +252,14 @@ impl Rico
                         .loads_register_u8(RegisterName::S)
                         .to(RegisterName::X)
                         .increments_pc(1)
-                        .uses_cycles(2)},         
+                        .uses_cycles(2)},  
+
+            0xBD => {opcode(rc_self).has_mnemonic("LDA $hhll, x".to_string())
+                        .loads_indirect_indexed_x()
+                        .to(RegisterName::X)
+                        .increments_pc(3)
+                        .uses_cycles(4)
+                    },    
 
             0x9A => {opcode(rc_self).has_mnemonic("TXS".to_string())
                         .loads_register_u8(RegisterName::X)
@@ -269,6 +289,22 @@ impl Rico
                         .to(RegisterName::Y)
                         .increments_pc(2)
                         .uses_cycles(2)}
+
+            0xC9 => {opcode(rc_self).has_mnemonic("CMP #$nn".to_string())
+                        .loads_immediate()
+                        .compares_value()
+                        .increments_pc(2)
+                        .uses_cycles(2)}     
+
+            0xCA => {opcode(rc_self).has_mnemonic("DEX".to_string())
+                        .decrements_register(RegisterName::X)
+                        .increments_pc(1)
+                        .uses_cycles(2)}     
+
+            0x88 => {opcode(rc_self).has_mnemonic("DEY".to_string())
+                        .decrements_register(RegisterName::Y)
+                        .increments_pc(1)
+                        .uses_cycles(2)}                                
 
             x => {                    
                     let e = format!("Encountered bad opcode {:#04x} at {:#06x}", x, pc);
@@ -558,11 +594,63 @@ mod opcodetests
     }
 
     #[test]
-    fn ldx_loads_y_reg()
+    fn ldy_loads_y_reg()
     {
         let mut cpu = setup(0xa0);
         cpu.mem.write_byte(0x0001, 0x10);
         cpu.execute(1);
         assert_eq!(cpu.y, 0x10);       
     }
+
+    #[test]
+    fn ldx_indexed_x_loads_x()
+    {
+        let mut cpu = setup(0xbd);
+        cpu.mem.write_byte(0x0001, 0x11);
+        cpu.mem.write_byte(0x0002, 0x12);
+        cpu.x = 0x10;
+        cpu.mem.write_byte(0x1221, 0xAB);
+        cpu.execute(1);
+        assert_eq!(cpu.x, 0xAB);       
+    }
+
+    #[test]
+    fn dex_decrements_x()
+    {
+        let mut cpu = setup(0xca);
+        cpu.x = 47;
+        cpu.execute(1);
+        assert_eq!(cpu.x, 46);       
+    }
+
+    #[test]
+    fn cmp_sets_carry_if_comparand_is_smaller()
+    {
+        let mut cpu = setup(0xc9);
+        cpu.mem.write_byte(0x0001, 0x11);       
+        cpu.a = 0x21;
+        cpu.execute(1);
+        assert_eq!(cpu.status & CARRY_MASK, CARRY_MASK);
+    }
+
+    #[test]
+    fn cmp_sets_zero_if_comparand_is_equal()
+    {
+        let mut cpu = setup(0xc9);
+        cpu.mem.write_byte(0x0001, 0x11);       
+        cpu.a = 0x11;
+        cpu.execute(1);
+        assert_eq!(cpu.status & ZERO_MASK, ZERO_MASK);
+    }
+
+    #[test]
+    fn cmp_sets_neg_if_comparand_is_larger()
+    {
+        let mut cpu = setup(0xc9);
+        cpu.mem.write_byte(0x0001, 0x21);       
+        cpu.a = 0x11;
+        cpu.execute(1);
+        assert_eq!(cpu.status & NEG_MASK, NEG_MASK);
+    }
+
 }

@@ -174,6 +174,37 @@ impl<'a> LoadResult<'a>
         self.toggle_cpu_bit(ZERO_MASK, result == 0);
         self.origin
     }
+
+    pub fn compares_value(self) -> Opcode<'a>
+    {
+        let res : i16;
+        {
+            let cpu = self.origin.cpu.borrow();
+            res = cpu.a as i16 - self.val as i16;
+        }
+        
+        self.toggle_cpu_bit(NEG_MASK, false);
+        self.toggle_cpu_bit(ZERO_MASK, false);
+        self.toggle_cpu_bit(CARRY_MASK, false);
+
+        if res < 0
+        {
+            self.toggle_cpu_bit(NEG_MASK, true);
+        }
+
+        if res == 0
+        {
+            self.toggle_cpu_bit(ZERO_MASK, true);
+        }
+
+        if res > 0
+        {
+            self.toggle_cpu_bit(CARRY_MASK, true);
+        }
+        
+
+        self.origin
+    }
 }
 
 pub struct StoreCommand<'a>
@@ -244,6 +275,23 @@ impl<'a> Opcode<'a>
     pub fn increments_pc(self, num_bytes: u16) -> Opcode<'a>
     {
         self.cpu.borrow_mut().pc += num_bytes;
+        self
+    }
+
+    pub fn decrements_register(self, reg: RegisterName) -> Opcode<'a>
+    {
+        {
+            let mut cpu = self.cpu.borrow_mut();
+
+            match reg
+            {
+                RegisterName::A => cpu.a -= 1,
+                RegisterName::X => cpu.x -= 1,
+                RegisterName::Y => cpu.y -= 1,
+                _ => panic!("Unsupported register")
+            }
+        }
+
         self
     }
 
