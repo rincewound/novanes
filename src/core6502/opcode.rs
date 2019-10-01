@@ -2,13 +2,14 @@
 use crate::core6502::*;
 
 use std::cell::RefCell;
-
+use std::fmt::{Display, Formatter, Result};
 
 pub struct Opcode<'a>
 {
     cpu: RefCell <&'a mut crate::core6502::Rico>
 }
 
+#[derive(Debug)]
 pub enum RegisterName
 {
     A,
@@ -17,6 +18,15 @@ pub enum RegisterName
     PC,
     S,
     Status
+}
+
+impl Display for RegisterName
+{
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        write!(f, "{:?}", self)
+        // or, alternatively:
+        // fmt::Debug::fmt(self, f)
+    }
 }
 
 pub struct LoadResult<'a>
@@ -55,6 +65,7 @@ impl<'a> LoadResult<'a>
             RegisterName::S => self.origin.cpu.borrow_mut().s = self.val as u8,
             RegisterName::Status => self.origin.cpu.borrow_mut().status = self.val as u8,
         }
+                println!("          V({:#2x}) -> {}", self.val, target);
         self.origin
     }
 
@@ -96,11 +107,15 @@ impl<'a> LoadResult<'a>
     {
         {
             let mut cpu = self.origin.cpu.borrow_mut();
+            let actualVal = self.val as i8;
             let isBitSet = (cpu.status & statusbit) != 0;
 
             if(isBitSet == val)
-            {
-                cpu.pc = self.val;
+            {                
+                let nextPc = (cpu.pc as i32 + actualVal as i32) as u16;
+                println!("          {:#4x} + {} = #({:#4x}) -> PC", cpu.pc, actualVal, nextPc);
+                cpu.pc = nextPc;
+                
             }
         }
 
@@ -282,14 +297,38 @@ impl<'a> Opcode<'a>
     {
         {
             let mut cpu = self.cpu.borrow_mut();
+            let mut val: u8;
 
             match reg
             {
-                RegisterName::A => cpu.a -= 1,
-                RegisterName::X => cpu.x -= 1,
-                RegisterName::Y => cpu.y -= 1,
+                RegisterName::A => val = cpu.a,
+                RegisterName::X => val = cpu.x,
+                RegisterName::Y => val = cpu.y,
                 _ => panic!("Unsupported register")
+            };
+
+            if val > 0
+            {
+                val -= 1;
+                if val == 0
+                {
+                    cpu.status |= ZERO_MASK;
+                }                
             }
+            else
+            {
+                val = 0xFF;
+                
+                cpu.status |= NEG_MASK;
+            }
+
+            match reg
+            {
+                RegisterName::A => cpu.a = val,
+                RegisterName::X => cpu.x = val,
+                RegisterName::Y => cpu.y = val,
+                _ => panic!("Unsupported register")
+            };
         }
 
         self
@@ -297,14 +336,20 @@ impl<'a> Opcode<'a>
 
     pub fn has_mnemonic(self, nmonic: String ) -> Opcode<'a>
     {
-        self.cpu.borrow_mut().last_opcode_nmonic = nmonic;
+        {
+            let mut cpu = self.cpu.borrow_mut();
+            cpu.current_opcode_nmonic = nmonic.clone();
+            println!("{:#4x}    {}", cpu.pc, nmonic);
+        }
         self
     }
 
     fn load_u16(&self, adr: u16) -> u16
     {
         let cpu = self.cpu.borrow();
-        cpu.mem.read_u16(adr as usize).unwrap()
+        let res = cpu.mem.read_u16(adr as usize).unwrap();
+        println!("          #({:#2x}) <- {:#4x}", res, adr);
+        res
     }
 
     fn fetch_u8(&self, adr: u16) -> u8
@@ -320,7 +365,10 @@ impl<'a> Opcode<'a>
 
         match result
         {
-            Ok(val) => LoadResult::new8(val, self),
+            Ok(val) => {
+                println!("          #({:#2x}) <- {:#4x}", val, adr);
+                LoadResult::new8(val, self)
+            },
             Err(_) => 
             {
                 self.cpu.borrow().print_cpu_state();
@@ -377,7 +425,7 @@ impl<'a> Opcode<'a>
     {
         let load_adr: u16;
         {
-            load_adr = self.load_u16(self.read_pc() + 1) + offset as u16;
+            load_adr = self.load_u16(self.read_pc() + 1) + offset as u16;            
         }
         self.load_u8_from_mem(load_adr)  
     }

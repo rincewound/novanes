@@ -33,8 +33,10 @@ pub struct Rico
     s: u8,          // Stack pointer
     status: u8,      // Also known as P
     previouspc: u16,        // Program Counter
-    last_opcode: u8,          // Stack pointer
-    last_opcode_nmonic: String
+    last_opcode: u8,         
+    last_opcode_nmonic: String,
+    current_opcode_nmonic: String,
+    current_opcode: u8
 
 }
 
@@ -63,7 +65,9 @@ impl Rico
             status: 0x34, // IRQ disabled,
             previouspc: 0x00,
             last_opcode: 0x00,
-            last_opcode_nmonic: "<none>".to_string()
+            last_opcode_nmonic: "<none>".to_string(),
+            current_opcode: 0x00,
+            current_opcode_nmonic: "<none>".to_string()
         }
     }
 
@@ -86,16 +90,20 @@ impl Rico
                     let dummypc = self.pc;
 
                     let breakAdr = 0x800A;
-                    if self.pc == 0x800A
+                    if self.pc == 0x8020
                     {
                         println!("Breakpoint hit.");
                     }
+
+                    self.current_opcode = x;
                     
                     // dispatch opcode
                     let cylces_taken = self.dispatch_opcode(x);
                     
                     self.previouspc = dummypc;
                     self.last_opcode = x;
+                    self.last_opcode_nmonic = self.current_opcode_nmonic.clone();
+                    self.current_opcode_nmonic = "<unknown>".to_string();
                     
 
                     // increase cyclecount -> dispatch tells us how
@@ -115,15 +123,14 @@ impl Rico
     pub fn print_cpu_state(&self)
     {
         println!("With:");
-        println!("  .X:       {:#2x}", self.x);
-        println!("  .Y:       {:#2x}", self.y);
-        println!("  .A:       {:#2x}", self.a);
-        println!("  .PC:      {:#2x}", self.pc);
-        println!("  .S(tack): {:#2x}", self.s);
-        println!("  .Stat:    {:#2x}", self.status);
-        println!("  .PrevPc:  {:#2x}", self.previouspc);
-        println!("  .CurrentOp:  {}"    , self.last_opcode_nmonic);
-        println!("  .Last Successful op:{:#2x})"    , self.last_opcode);
+        println!("  .X:                  {:#2x}", self.x);
+        println!("  .Y:                  {:#2x}", self.y);
+        println!("  .A:                  {:#2x}", self.a);
+        println!("  .PC:                 {:#2x}", self.pc);
+        println!("  .S(tack):            {:#2x}", self.s);
+        println!("  .Stat:               {:#2x}", self.status);
+        println!("  .Cur Op:             {}({:#2x}) @ {:#2x}"     , self.current_opcode_nmonic, self.current_opcode, self.pc);
+        println!("  .Last Successful op: {}({:#2x}) @ {:#2x}"     , self.last_opcode_nmonic, self.last_opcode, self.previouspc);        
     }
 
     fn dispatch_opcode(&mut self, oc: u8) -> u16
@@ -136,8 +143,8 @@ impl Rico
                                      .increments_pc(1)
                                      .uses_cycles(1) },
             0x10 => { opcode(rc_self).has_mnemonic("BPL".to_string())
-                                     .loads_immediate_16bit()
-                                     .jumps_relative_if_statusbit(NEG_MASK, true)
+                                     .loads_immediate()
+                                     .jumps_relative_if_statusbit(NEG_MASK, false)
                                      .increments_pc(2)
                                      .uses_cycles(2) },
             
