@@ -1,5 +1,7 @@
 mod core6502;
 mod memory;
+mod ppu;
+use crate::memory::Memory;
 
 use std::io::{self, BufReader, Read};
 use std::fs::{self, File};
@@ -55,13 +57,13 @@ fn load_rom(romfile: String, targetMemory: &mut dyn memory::Memory)
 }
 
 fn main() {
-    let mut lowMem = memory::RawMemory::new(0x7FFF);
+    let mut ppu = ppu::ppu::new();
     let mut m = memory::RawMemory::new(0x8000);
     let mut memmap = memory::CompositeMemory::new();
     
     // ToDo: Add peripherals as ranges as well.
-    memmap.register_range(0x0000, 0x7FFF, Box::new(lowMem));
     memmap.register_range(0x8000, 0x8000 + 0x8000, Box::new(m));
+    memmap.register_range(0x2000, 0x2000 + 0x0008, Box::new(ppu));
 
     let mut core = core6502::Rico::new(Box::new(memmap));
 
@@ -69,6 +71,4 @@ fn main() {
     {
         core.execute(100);
     }
-
-    //println!("Hello, world!");
 }

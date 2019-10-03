@@ -110,7 +110,7 @@ impl<'a> LoadResult<'a>
             let actualVal = self.val as i8;
             let isBitSet = (cpu.status & statusbit) != 0;
 
-            if(isBitSet == val)
+            if isBitSet == val
             {                
                 let nextPc = (cpu.pc as i32 + actualVal as i32) as u16;
                 println!("          {:#4x} + {} = #({:#4x}) -> PC", cpu.pc, actualVal, nextPc);

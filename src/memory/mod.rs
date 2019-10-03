@@ -30,6 +30,8 @@ pub trait Memory
         //let res = lo | (hi << 8);
         //res
     }
+
+    fn tick(&mut self){}
 }
 
 pub struct RawMemory
@@ -86,6 +88,15 @@ impl Memory for CompositeMemory
         let err = format!("Memory.WriteByte: {:#4x} -> Bad Addr", address);
         println!("{}", err);
         MemError::BadAddress
+    }
+
+    fn tick(&mut self)
+    {
+        let it = self.handlers.iter_mut();
+        for m in it
+        {
+            m.handler.tick();
+        }
     }
 }
 

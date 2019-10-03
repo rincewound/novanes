@@ -117,7 +117,9 @@ impl Rico
                      panic!("Bad memory location read."); 
                      }
             }                    
-        }    
+        }
+        
+        self.mem.tick();    
     }
 
     pub fn print_cpu_state(&self)
