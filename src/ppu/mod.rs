@@ -1,4 +1,7 @@
 use crate::memory::*;
+use crate::log;
+use std::sync::{Arc,Mutex};
+
 
 const PIXELS_PER_SCANLINE: u16 = 256;
 const VISIBLE_SCANLINES : u16 = 224;
@@ -46,7 +49,7 @@ impl Memory for ppu
         match address
         {
             0x02 => {
-                println!("          PPU.ReadStatus: #({:#02x})", self.status);
+               self.log(format!("          PPU.ReadStatus: #({:#02x})", self.status));
                let statuscopy = self.status;
                self.status &= !VBlankBit;
                return Ok(statuscopy)
@@ -55,7 +58,7 @@ impl Memory for ppu
         }
 
         let err = format!("PPU.Read: {:#04x} -> Bad Addr", address);
-        println!("{}", err);
+        self.log(format!("{}", err));
         Err(MemError::BadAddress)
     }
 
@@ -64,11 +67,11 @@ impl Memory for ppu
         match address
         {
             0x2000 => {
-                println!("          PPU.Ctrl1 -> {:#2x}", data);
+                self.log(format!("          PPU.Ctrl1 -> {:#2x}", data));
                 return MemError::Ok;
             },
             0x2001 => {
-                println!("          PPU.Ctrl2 -> {:#2x}", data);
+                self.log(format!("          PPU.Ctrl2 -> {:#2x}", data));
                 return MemError::Ok;
             }
             0x2002 => {

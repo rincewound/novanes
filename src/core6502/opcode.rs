@@ -260,7 +260,13 @@ pub struct StoreCommand<'a>
 }
 
 impl<'a> StoreCommand<'a>
-{ 
+{     
+    pub fn log(&self, message: String)
+    {
+        let cpu = self.origin.cpu.borrow();
+        cpu.log(message);
+    }
+
     pub fn new16(value: u16, source: Opcode<'a>) -> Self
     {
         StoreCommand
@@ -281,12 +287,15 @@ impl<'a> StoreCommand<'a>
 
     pub fn to_immediate_address(self) -> Opcode<'a>
     {        
-        {
-        let mut cpu = self.origin.cpu.borrow_mut();
-        let readAdr = (cpu.pc + 1) as usize;
-        let adr = cpu.mem.read_u16(readAdr).unwrap() as usize;
-        cpu.mem.write_byte(adr, self.val as u8);
+        let logstring: String;
+        {        
+            let mut cpu = self.origin.cpu.borrow_mut();
+            let readAdr = (cpu.pc + 1) as usize;
+            let adr = cpu.mem.read_u16(readAdr).unwrap() as usize;
+            logstring = format!("       #({}) -> #({})", self.val as u8, adr);
+            cpu.mem.write_byte(adr, self.val as u8);
         }
+        self.log(logstring);
         self.origin
     }
 
@@ -296,7 +305,16 @@ impl<'a> StoreCommand<'a>
     }
 
     pub fn to_zeropage(self) -> Opcode<'a>
-    {
+    { 
+        let logstring: String;
+        {
+            let mut cpu = self.origin.cpu.borrow_mut();
+            let readAdr = (cpu.pc + 1) as usize;
+            let adr = cpu.mem.read_byte(readAdr).unwrap() as usize;
+            logstring = format!("          #({}) -> {:#4x}", self.val as u8, adr);
+            cpu.mem.write_byte(adr, self.val as u8);
+        }
+        self.log(logstring);
         self.origin
     }
 
@@ -425,15 +443,20 @@ impl<'a> Opcode<'a>
 
     fn read_register(&self, reg: RegisterName) -> u8
     {
+        let mut val : u8;
         match reg
         {
-            RegisterName::A => self.cpu.borrow().a,
-            RegisterName::X => self.cpu.borrow().x,
-            RegisterName::Y => self.cpu.borrow().y,
-            RegisterName::S => self.cpu.borrow().s,
-            RegisterName::Status => self.cpu.borrow().status,
+            RegisterName::A => val = self.cpu.borrow().a,
+            RegisterName::X => val = self.cpu.borrow().x,
+            RegisterName::Y => val = self.cpu.borrow().y,
+            RegisterName::S => val = self.cpu.borrow().s,
+            RegisterName::Status => val = self.cpu.borrow().status,
             _ => panic!("cannot read this register as 8 bit value")
         }
+
+        self.log(format!("          {} -> #({})", reg, val));
+
+        val
     }
 
     fn read_pc(&self) -> u16

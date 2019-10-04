@@ -303,6 +303,12 @@ impl Rico
                         .increments_pc(3)
                         .uses_cycles(4)}
 
+            0x85 => {opcode(rc_self).has_mnemonic("STA $ll".to_string())
+                        .stores(RegisterName::A)
+                        .to_zeropage()
+                        .increments_pc(2)
+                        .uses_cycles(3)}
+
             0xA2 => {opcode(rc_self).has_mnemonic("LDX #$nn".to_string())
                         .loads_immediate()
                         .to(RegisterName::X)
