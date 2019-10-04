@@ -124,6 +124,23 @@ impl<'a> LoadResult<'a>
         self.origin
     }
 
+    pub fn jumps_to_subroutine(self) -> Opcode<'a>
+    {
+        {
+            //push pc to stack
+            let mut cpu = self.origin.cpu.borrow_mut();
+            let nextpc = cpu.pc + 2;
+            cpu.pc = self.val;
+            let write0 = cpu.s as usize;
+            let write1 = (cpu.s - 1) as usize;
+            cpu.mem.write_byte(write0, (nextpc & 0xFF) as u8);
+            cpu.mem.write_byte(write1, ((nextpc & 0xFF00) >> 8) as u8);
+            cpu.s -= 2;
+        }
+        
+        self.origin
+    }
+
     pub fn subtracts_from_accumulator(self) -> Opcode<'a>
     {
         let mut tmpval : i16 = 0;
@@ -544,7 +561,7 @@ mod store_command_tests
 
     fn CheckHasValAt(sr: &Opcode, adr: usize, val: u8)
     {
-        let result = sr.cpu.borrow().mem.read_byte(0x1020);
+        let result = sr.cpu.borrow_mut().mem.read_byte(0x1020);
 
         match result
         {

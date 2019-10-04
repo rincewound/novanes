@@ -74,9 +74,9 @@ impl Memory for ppu
         //     self.data[address] = data;
         //     return MemError::Ok;
         // }
-        let err = format!("         PPU.Write: {:#04x} -> Bad Addr", address);
-        println!("{}", err);
-        MemError::BadAddress
+        // let err = format!("         PPU.Write: {:#04x} -> Bad Addr", address);
+        // println!("{}", err);
+        // MemError::BadAddress
     }
 
     fn tick(&mut self, clock_ticks: u32)

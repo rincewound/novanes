@@ -149,6 +149,12 @@ impl Rico
                                      .jumps_relative_if_statusbit(NEG_MASK, false)
                                      .increments_pc(2)
                                      .uses_cycles(2) },
+
+             0x20 => { opcode(rc_self).has_mnemonic("JSR $hhll".to_string())
+                                     .loads_immediate_16bit()
+                                     .jumps_to_subroutine()
+                                     .increments_pc(0)      // Is done internally ?!?
+                                     .uses_cycles(6) },
             
             0xB0 => { opcode(rc_self).has_mnemonic("BCS".to_string())
                                      .loads_immediate_16bit()

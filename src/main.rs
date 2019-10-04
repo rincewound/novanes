@@ -10,8 +10,8 @@ use std::slice;
 
 struct INESHeader
 {
-    constData: [u8; 4],     // always "NES/0x1A"
-    progRomBanks: u8,       // in 16 KiB units
+    const_data: [u8; 4],     // always "NES/0x1A"
+    prog_rom_banks: u8,       // in 16 KiB units
     charRomBanks: u8,       // in 8 KiB units
     flagBytes: [u8; 10]
 }
@@ -37,12 +37,12 @@ fn load_rom(romfile: String, targetMemory: &mut dyn memory::Memory)
     let file = fs::File::open(romfile);
     let mut rd = BufReader::new(file.unwrap());
     let res = read_struct::<INESHeader,_>(&mut rd).unwrap();    
-    println!("Has {} PRG ROM banks", res.progRomBanks);
+    println!("Has {} PRG ROM banks", res.prog_rom_banks);
         
     let mut prg_buf : [u8; 16384] = [0x00; 16384];
 
     let mut x: u32;
-    for x in 0..res.progRomBanks
+    for x in 0..res.prog_rom_banks
     {        
         rd.read_exact(&mut prg_buf);
         let mut i: u32 = 0;
@@ -57,8 +57,8 @@ fn load_rom(romfile: String, targetMemory: &mut dyn memory::Memory)
 }
 
 fn main() {
-    let mut ppu = ppu::ppu::new();
-    let mut ram = memory::RawMemory::new(0x2000);
+    let ppu = ppu::ppu::new();
+    let ram = memory::RawMemory::new(0x2000);
     let mut m = memory::RawMemory::new(0x8000);
     let mut memmap = memory::CompositeMemory::new();
     
