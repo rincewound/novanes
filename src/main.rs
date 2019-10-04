@@ -1,12 +1,17 @@
 mod core6502;
 mod memory;
 mod ppu;
+mod log;
+
 use crate::memory::Memory;
 
 use std::io::{self, BufReader, Read};
 use std::fs::{self, File};
 use std::path::Path;
 use std::slice;
+
+use std::sync::Mutex;
+use std::sync::Arc;
 
 struct INESHeader
 {
@@ -57,7 +62,8 @@ fn load_rom(romfile: String, targetMemory: &mut dyn memory::Memory)
 }
 
 fn main() {
-    let ppu = ppu::ppu::new();
+    let logger = Arc::new(Mutex::new(log::logger::new()));
+    let ppu = ppu::ppu::new(logger.clone());
     let ram = memory::RawMemory::new(0x2000);
     let mut m = memory::RawMemory::new(0x8000);
     let mut memmap = memory::CompositeMemory::new();
@@ -67,7 +73,7 @@ fn main() {
     memmap.register_range(0x8000, 0x8000 + 0x8000, Box::new(m));
     memmap.register_range(0x2000, 0x2000 + 0x0008, Box::new(ppu));
 
-    let mut core = core6502::Rico::new(Box::new(memmap));
+    let mut core = core6502::Rico::new(Box::new(memmap), logger.clone());
 
     loop
     {

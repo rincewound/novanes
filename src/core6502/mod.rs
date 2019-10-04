@@ -6,7 +6,10 @@ use std::cell::RefCell;
 mod opcode;
 
 use super::memory::*;
+use crate::log;
 use opcode::*;
+
+use std::sync::{Arc,Mutex};
 
 pub const CARRY_MASK: u8 = 0x01;
 pub const ZERO_MASK: u8 = 0x02;
@@ -36,13 +39,19 @@ pub struct Rico
     last_opcode: u8,         
     last_opcode_nmonic: String,
     current_opcode_nmonic: String,
-    current_opcode: u8
-
+    current_opcode: u8,
+    logger: Arc<Mutex<log::logger>>
 }
 
 impl Rico
 {
-    pub fn new (mut mem: Box<dyn Memory> ) -> Self
+    pub fn log(&self, message: String)
+    {
+        let mut lg = self.logger.lock().unwrap();
+        lg.write(message);
+    }
+
+    pub fn new (mut mem: Box<dyn Memory>, log: Arc<Mutex<log::logger>> ) -> Self
     {
         for i in 0x4000..0x400F
         {
@@ -67,7 +76,8 @@ impl Rico
             last_opcode: 0x00,
             last_opcode_nmonic: "<none>".to_string(),
             current_opcode: 0x00,
-            current_opcode_nmonic: "<none>".to_string()
+            current_opcode_nmonic: "<none>".to_string(),
+            logger: log
         }
     }
 
@@ -92,7 +102,7 @@ impl Rico
                     let breakAdr = 0x800A;
                     if self.pc == 0x8020
                     {
-                        println!("Breakpoint hit.");
+                        self.log("Breakpoint hit.".to_string());
                     }
 
                     self.current_opcode = x;
@@ -124,15 +134,15 @@ impl Rico
 
     pub fn print_cpu_state(&self)
     {
-        println!("With:");
-        println!("  .X:                  {:#2x}", self.x);
-        println!("  .Y:                  {:#2x}", self.y);
-        println!("  .A:                  {:#2x}", self.a);
-        println!("  .PC:                 {:#2x}", self.pc);
-        println!("  .S(tack):            {:#2x}", self.s);
-        println!("  .Stat:               {:#2x}", self.status);
-        println!("  .Cur Op:             {}({:#2x}) @ {:#2x}"     , self.current_opcode_nmonic, self.current_opcode, self.pc);
-        println!("  .Last Successful op: {}({:#2x}) @ {:#2x}"     , self.last_opcode_nmonic, self.last_opcode, self.previouspc);        
+        self.log(format!("With:"));
+        self.log(format!("  .X:                  {:#2x}", self.x));
+        self.log(format!("  .Y:                  {:#2x}", self.y));
+        self.log(format!("  .A:                  {:#2x}", self.a));
+        self.log(format!("  .PC:                 {:#2x}", self.pc));
+        self.log(format!("  .S(tack):            {:#2x}", self.s));
+        self.log(format!("  .Stat:               {:#2x}", self.status));
+        self.log(format!("  .Cur Op:             {}({:#2x}) @ {:#2x}"     , self.current_opcode_nmonic, self.current_opcode, self.pc));
+        self.log(format!("  .Last Successful op: {}({:#2x}) @ {:#2x}"     , self.last_opcode_nmonic, self.last_opcode, self.previouspc));   
     }
 
     fn dispatch_opcode(&mut self, oc: u8) -> u16
@@ -324,8 +334,10 @@ impl Rico
             x => {                    
                     let e = format!("Encountered bad opcode {:#04x} at {:#06x}", x, pc);
                     //self.print_cpu_state();
-                    println!("{}", e);
-                    rc_self.borrow().print_cpu_state();
+                    let s = rc_self.borrow();
+                    s.log(format!("{}", e));
+                    s.print_cpu_state();
+                    s.logger.lock().unwrap().to_console();
                     panic!(e)
                 }
         }
@@ -344,9 +356,10 @@ mod opcodetests
     
     fn setup(opcode: u8) -> crate::core6502::Rico
     {
+        let logger = Arc::new(Mutex::new(log::logger::new()));
         let mut m = RawMemory::new(0x8000);
         m.write_byte(0x0000, opcode);
-        let mut r = Rico::new(Box::new(m));
+        let mut r = Rico::new(Box::new(m), logger);
         r.pc = 0x00;
         r.s = 0x00;
         r

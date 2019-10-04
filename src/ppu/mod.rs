@@ -17,17 +17,25 @@ pub struct ppu
     status: u8,
     line: u16,
     lastpixel: u16,
+    logger: Arc<Mutex<log::logger>>
 }
 
 impl ppu
 {
-    pub fn new() -> Self
+    pub fn new(log: Arc<Mutex<log::logger>>) -> Self
     {
         ppu {
             status: 0,
             line: 0,
-            lastpixel: 0
+            lastpixel: 0,
+            logger: log
             }
+    }
+
+    pub fn log(&self, message: String)
+    {
+        let mut lg = self.logger.lock().unwrap();
+        lg.write(message);
     }
 }
 

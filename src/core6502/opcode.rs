@@ -38,6 +38,12 @@ pub struct LoadResult<'a>
 
 impl<'a> LoadResult<'a>
 { 
+    pub fn log(&self, message: String)
+    {
+        let cpu = self.origin.cpu.borrow();
+        cpu.log(message);
+    }
+
     pub fn new16(value: u16, source: Opcode<'a>) -> Self
     {
         LoadResult{
@@ -67,7 +73,7 @@ impl<'a> LoadResult<'a>
             RegisterName::S => self.origin.cpu.borrow_mut().s = self.val as u8,
             RegisterName::Status => self.origin.cpu.borrow_mut().status = self.val as u8,
         }
-        println!("          V({:#2x}) -> {}", self.val, target);
+        self.log(format!("          V({:#2x}) -> {}", self.val, target));
         self.origin
     }
 
@@ -107,18 +113,24 @@ impl<'a> LoadResult<'a>
 
     pub fn jumps_relative_if_statusbit(self, statusbit: u8, val: bool) -> Opcode<'a>
     {
+        let mut logstring = String::from("foo");
+        let mut isBitSet: bool = false;
         {
             let mut cpu = self.origin.cpu.borrow_mut();
             let actualVal = self.val as i8;
-            let isBitSet = (cpu.status & statusbit) != 0;
+            isBitSet = (cpu.status & statusbit) != 0;
 
             if isBitSet == val
             {                
-                let nextPc = (cpu.pc as i32 + actualVal as i32) as u16;
-                println!("          {:#4x} + {} = #({:#4x}) -> PC", cpu.pc, actualVal, nextPc);
-                cpu.pc = nextPc;
-                
+                let next_pc = (cpu.pc as i32 + actualVal as i32) as u16;                
+                cpu.pc = next_pc;                
+                logstring = format!("          {:#4x} + {} = #({:#4x}) -> PC", cpu.pc, actualVal, next_pc);                              
             }
+        }
+
+        if isBitSet
+        {
+            self.log(logstring);
         }
 
         self.origin
@@ -297,6 +309,12 @@ impl<'a> StoreCommand<'a>
 
 impl<'a> Opcode<'a>
 {
+    pub fn log(&self, message: String)
+    {
+        let cpu = self.cpu.borrow();
+        cpu.log(message);
+    }
+
     pub fn new(cpu:  RefCell <&'a mut crate::core6502::Rico>) -> Self
     {
         Opcode{cpu: cpu}
@@ -357,18 +375,25 @@ impl<'a> Opcode<'a>
     pub fn has_mnemonic(self, nmonic: String ) -> Opcode<'a>
     {
         {
+            let mut pc: u16 = 0;
+            {
             let mut cpu = self.cpu.borrow_mut();
             cpu.current_opcode_nmonic = nmonic.clone();
-            println!("{:#4x}    {}", cpu.pc, nmonic);
+            pc = cpu.pc;
+            }
+            self.log(format!("{:#4x}    {}", pc, nmonic));
         }
         self
     }
 
     fn load_u16(&self, adr: u16) -> u16
     {
-        let mut cpu = self.cpu.borrow_mut();
-        let res = cpu.mem.read_u16(adr as usize).unwrap();
-        println!("          #({:#2x}) <- {:#4x}", res, adr);
+        let mut res: u16 = 0;
+        {
+            let mut cpu = self.cpu.borrow_mut();
+            res = cpu.mem.read_u16(adr as usize).unwrap();
+        }
+        self.log(format!("          #({:#2x}) <- {:#4x}", res, adr));
         res
     }
 
@@ -386,13 +411,13 @@ impl<'a> Opcode<'a>
         match result
         {
             Ok(val) => {
-                println!("          #({:#2x}) <- {:#4x}", val, adr);
+                self.log(format!("          #({:#2x}) <- {:#4x}", val, adr));
                 LoadResult::new8(val, self)
             },
             Err(_) => 
             {
                 self.cpu.borrow().print_cpu_state();
-                println!("access violation at pc {:#4x}", pc + 1);
+                self.log(format!("access violation at pc {:#4x}", pc + 1));
                 panic!("failed to read from {:#4x}", adr);
             }
         }  
@@ -550,8 +575,9 @@ mod store_command_tests
         where T: FnOnce(StoreCommand) -> () + panic::UnwindSafe
     {
         let result = panic::catch_unwind(|| {
+            let logger = Arc::new(Mutex::new(log::logger::new()));
             let mem = RawMemory::new(0x10000);
-            let mut cpu = Rico::new(Box::new(mem));
+            let mut cpu = Rico::new(Box::new(mem), logger);
             let oc = opcode(RefCell::new(&mut cpu));
             let sc = StoreCommand::new8(val, oc);
             test(sc)
@@ -597,8 +623,9 @@ mod load_result_tests
         where T: FnOnce(LoadResult) -> () + panic::UnwindSafe
     {
         let result = panic::catch_unwind(|| {
+            let logger = Arc::new(Mutex::new(log::logger::new()));
             let mem = RawMemory::new(0x8000);
-            let mut cpu = Rico::new(Box::new(mem));
+            let mut cpu = Rico::new(Box::new(mem), logger);
             let oc = opcode(RefCell::new(&mut cpu));
             let lr = LoadResult::new8(val, oc);
             test(lr)
