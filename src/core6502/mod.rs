@@ -118,8 +118,8 @@ impl Rico
                      }
             }                    
         }
-        
-        self.mem.tick();    
+
+        self.mem.tick(num_cycles);    
     }
 
     pub fn print_cpu_state(&self)

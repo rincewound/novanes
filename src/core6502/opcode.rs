@@ -57,6 +57,8 @@ impl<'a> LoadResult<'a>
     pub fn to(self, target: RegisterName) -> Opcode<'a>
     {
         // ToDo: this method might need to adjust status registers!
+        self.toggle_cpu_bit(NEG_MASK, (self.val as u8 & 0x80) != 0);
+
         match target{
             RegisterName::A => self.origin.cpu.borrow_mut().a = self.val as u8,
             RegisterName::X => self.origin.cpu.borrow_mut().x = self.val as u8,
@@ -65,7 +67,7 @@ impl<'a> LoadResult<'a>
             RegisterName::S => self.origin.cpu.borrow_mut().s = self.val as u8,
             RegisterName::Status => self.origin.cpu.borrow_mut().status = self.val as u8,
         }
-                println!("          V({:#2x}) -> {}", self.val, target);
+        println!("          V({:#2x}) -> {}", self.val, target);
         self.origin
     }
 
@@ -252,7 +254,8 @@ impl<'a> StoreCommand<'a>
     {        
         {
         let mut cpu = self.origin.cpu.borrow_mut();
-        let adr = cpu.mem.read_u16((cpu.pc + 1) as usize).unwrap() as usize;
+        let readAdr = (cpu.pc + 1) as usize;
+        let adr = cpu.mem.read_u16(readAdr).unwrap() as usize;
         cpu.mem.write_byte(adr, self.val as u8);
         }
         self.origin
@@ -346,7 +349,7 @@ impl<'a> Opcode<'a>
 
     fn load_u16(&self, adr: u16) -> u16
     {
-        let cpu = self.cpu.borrow();
+        let mut cpu = self.cpu.borrow_mut();
         let res = cpu.mem.read_u16(adr as usize).unwrap();
         println!("          #({:#2x}) <- {:#4x}", res, adr);
         res
@@ -354,13 +357,13 @@ impl<'a> Opcode<'a>
 
     fn fetch_u8(&self, adr: u16) -> u8
     {
-        let cpu = self.cpu.borrow();
+        let mut cpu = self.cpu.borrow_mut();
         cpu.mem.read_byte(adr as usize).unwrap()
     }
 
     fn load_u8_from_mem(self, adr: u16) -> LoadResult<'a>
     {
-        let result = self.cpu.borrow().mem.read_byte(adr as usize);
+        let result = self.cpu.borrow_mut().mem.read_byte(adr as usize);
         let pc = self.cpu.borrow().pc;
 
         match result
@@ -446,7 +449,7 @@ impl<'a> Opcode<'a>
     {      
         let adr = self.read_pc() + 1;
         {
-            let adrread = self.cpu.borrow().mem.read_byte(adr as usize);
+            let adrread = self.cpu.borrow_mut().mem.read_byte(adr as usize);
             match adrread
             {
                 Ok(val) => self.load_u8_from_mem((val + offset) as u16),

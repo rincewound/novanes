@@ -16,11 +16,11 @@ struct INESHeader
     flagBytes: [u8; 10]
 }
 
-fn read_struct<T, R: Read>(mut read: &mut R) -> io::Result<T> {
+fn read_struct<T, R: Read>(read: &mut R) -> io::Result<T> {
     let num_bytes = ::std::mem::size_of::<T>();
     unsafe {
         let mut s = ::std::mem::uninitialized();
-        let mut buffer = slice::from_raw_parts_mut(&mut s as *mut T as *mut u8, num_bytes);
+        let buffer = slice::from_raw_parts_mut(&mut s as *mut T as *mut u8, num_bytes);
         match read.read_exact(buffer) {
             Ok(()) => Ok(s),
             Err(e) => {
@@ -58,10 +58,12 @@ fn load_rom(romfile: String, targetMemory: &mut dyn memory::Memory)
 
 fn main() {
     let mut ppu = ppu::ppu::new();
+    let mut ram = memory::RawMemory::new(0x2000);
     let mut m = memory::RawMemory::new(0x8000);
     let mut memmap = memory::CompositeMemory::new();
     
     // ToDo: Add peripherals as ranges as well.
+    memmap.register_range(0x0000, 0x2000, Box::new(ram));
     memmap.register_range(0x8000, 0x8000 + 0x8000, Box::new(m));
     memmap.register_range(0x2000, 0x2000 + 0x0008, Box::new(ppu));
 
@@ -69,6 +71,9 @@ fn main() {
 
     loop
     {
-        core.execute(100);
+        // NTSC has 113 2/3 cycles per scanline, we round this to 114, this
+        // boils down to three pixels per CPU cycle. We sync once per
+        // scanline
+        core.execute(114);
     }
 }

@@ -8,9 +8,9 @@ pub enum MemError
 
 pub trait Memory
 {
-    fn read_byte(&self, address: usize) -> Result<u8, MemError>;
+    fn read_byte(&mut self, address: usize) -> Result<u8, MemError>;
     fn write_byte(&mut self, address: usize, data: u8) -> MemError;
-    fn read_u16(&self, address: usize) -> Result<u16, MemError>
+    fn read_u16(&mut self, address: usize) -> Result<u16, MemError>
     {
         let hi = self.read_byte(address);
         let lo = self.read_byte(address + 1);
@@ -31,7 +31,7 @@ pub trait Memory
         //res
     }
 
-    fn tick(&mut self){}
+    fn tick(&mut self, clock_ticks: u32){}
 }
 
 pub struct RawMemory
@@ -58,14 +58,14 @@ pub struct CompositeMemory
 
 impl Memory for CompositeMemory
 {
-    fn read_byte(&self, address: usize) -> Result<u8, MemError>
+    fn read_byte(&mut self, address: usize) -> Result<u8, MemError>
     {
         // find correct handler:
-        let mut it = self.handlers.iter();
+        let mut it = self.handlers.iter_mut();
 
-        let m = it.find(|x| x.range.begin <= address && x.range.end >= address);
+        let mut m = it.find(|x| x.range.begin <= address && x.range.end >= address);
 
-        if let Some(m) = m {
+        if let Some(m) =  m {
             let rangestart = m.range.begin;
             return m.handler.read_byte(address - rangestart);
         }
@@ -90,12 +90,12 @@ impl Memory for CompositeMemory
         MemError::BadAddress
     }
 
-    fn tick(&mut self)
+    fn tick(&mut self, clock_ticks: u32)
     {
         let it = self.handlers.iter_mut();
         for m in it
         {
-            m.handler.tick();
+            m.handler.tick(clock_ticks);
         }
     }
 }
@@ -120,7 +120,7 @@ impl CompositeMemory
 
 impl Memory for RawMemory
 {
-    fn read_byte(&self, address: usize) -> Result<u8, MemError>
+    fn read_byte(&mut self, address: usize) -> Result<u8, MemError>
     {
         if address < self.data.len()
         {
