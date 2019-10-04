@@ -154,6 +154,7 @@ impl Rico
             0x00 => { opcode(rc_self).has_mnemonic("NOP".to_string())
                                      .increments_pc(1)
                                      .uses_cycles(1) },
+
             0x10 => { opcode(rc_self).has_mnemonic("BPL".to_string())
                                      .loads_immediate()
                                      .jumps_relative_if_statusbit(NEG_MASK, false)
@@ -171,6 +172,12 @@ impl Rico
                                      .jumps_relative_if_statusbit(CARRY_MASK, true)
                                      .increments_pc(2)
                                      .uses_cycles(2) },
+            
+            0xD0 => { opcode(rc_self).has_mnemonic("BNE".to_string())
+                            .loads_immediate_16bit()
+                            .jumps_relative_if_statusbit(ZERO_MASK, false)
+                            .increments_pc(2)
+                            .uses_cycles(2) },
 
             0x78 => {opcode(rc_self).has_mnemonic("SEI".to_string())
                                     .toggles_cpu_bit(IRQ_DISABLE_MASK, true)
@@ -308,6 +315,18 @@ impl Rico
                         .to_zeropage()
                         .increments_pc(2)
                         .uses_cycles(3)}
+            
+            0x91 => {opcode(rc_self).has_mnemonic("STA ($ll), Y".to_string())
+                        .stores(RegisterName::A)
+                        .to_indirect_address(RegisterName::Y)
+                        .increments_pc(2)
+                        .uses_cycles(6)}
+            
+            0x86 => {opcode(rc_self).has_mnemonic("STX $ll".to_string())
+                        .stores(RegisterName::X)
+                        .to_zeropage()
+                        .increments_pc(2)
+                        .uses_cycles(3)}
 
             0xA2 => {opcode(rc_self).has_mnemonic("LDX #$nn".to_string())
                         .loads_immediate()
@@ -323,7 +342,7 @@ impl Rico
 
             0xC9 => {opcode(rc_self).has_mnemonic("CMP #$nn".to_string())
                         .loads_immediate()
-                        .compares_value()
+                        .compares_value(RegisterName::A)
                         .increments_pc(2)
                         .uses_cycles(2)}     
 
@@ -335,7 +354,19 @@ impl Rico
             0x88 => {opcode(rc_self).has_mnemonic("DEY".to_string())
                         .decrements_register(RegisterName::Y)
                         .increments_pc(1)
-                        .uses_cycles(2)}                                
+                        .uses_cycles(2)}
+
+            0xE0 => { opcode(rc_self).has_mnemonic("CPX #$nn".to_string())
+                        .loads_immediate()
+                        .compares_value(RegisterName::X)
+                        .increments_pc(2)
+                        .uses_cycles(2)},
+
+            0xC0 => { opcode(rc_self).has_mnemonic("CPY #$nn".to_string())
+                        .loads_immediate()
+                        .compares_value(RegisterName::Y)
+                        .increments_pc(2)
+                        .uses_cycles(2)},                                   
 
             x => {                    
                     let e = format!("Encountered bad opcode {:#04x} at {:#06x}", x, pc);
@@ -369,6 +400,12 @@ mod opcodetests
         r.pc = 0x00;
         r.s = 0x00;
         r
+    }
+
+    fn hasValueAt(cpu: &mut crate::core6502::Rico, adr: u16, val: u8) -> bool
+    {
+        let v = cpu.mem.read_byte(adr as usize).unwrap();
+        return v == val;
     }
 
     fn teardown()
@@ -685,6 +722,16 @@ mod opcodetests
         cpu.a = 0x11;
         cpu.execute(1);
         assert_eq!(cpu.status & NEG_MASK, NEG_MASK);
+    }
+
+    #[test]
+    fn stx_works()
+    {
+        let mut cpu = setup(0x86);
+        cpu.mem.write_byte(0x0001, 0x24);
+        cpu.x = 0xFA;
+        cpu.execute(1);
+        assert_eq!(true, hasValueAt(&mut cpu, 0x24, 0xFA))
     }
 
 }

@@ -63,7 +63,7 @@ impl Memory for CompositeMemory
         // find correct handler:
         let mut it = self.handlers.iter_mut();
 
-        let mut m = it.find(|x| x.range.begin <= address && x.range.end >= address);
+        let m = it.find(|x| x.range.begin <= address && x.range.end >= address);
 
         if let Some(m) =  m {
             let rangestart = m.range.begin;

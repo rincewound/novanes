@@ -9,7 +9,7 @@ pub struct Opcode<'a>
     cpu: RefCell <&'a mut crate::core6502::Rico>
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum RegisterName
 {
     A,
@@ -113,7 +113,7 @@ impl<'a> LoadResult<'a>
 
     pub fn jumps_relative_if_statusbit(self, statusbit: u8, val: bool) -> Opcode<'a>
     {
-        let mut logstring = String::from("foo");
+        let mut logstring = String::from("");
         let mut isBitSet: bool = false;
         {
             let mut cpu = self.origin.cpu.borrow_mut();
@@ -128,7 +128,7 @@ impl<'a> LoadResult<'a>
             }
         }
 
-        if isBitSet
+        if isBitSet == val
         {
             self.log(logstring);
         }
@@ -221,13 +221,21 @@ impl<'a> LoadResult<'a>
         self.origin
     }
 
-    pub fn compares_value(self) -> Opcode<'a>
+    pub fn compares_value(self, target: RegisterName) -> Opcode<'a>
     {
         let res : i16;
+        let comparand : i16;
         {
             let cpu = self.origin.cpu.borrow();
-            res = cpu.a as i16 - self.val as i16;
+            match target{
+                RegisterName::A => {res = cpu.a as i16 - self.val as i16; comparand = cpu.a as i16},
+                RegisterName::X => {res = cpu.x as i16 - self.val as i16; comparand = cpu.x as i16},
+                RegisterName::Y => {res = cpu.y as i16 - self.val as i16; comparand = cpu.y as i16},
+                _ => panic!("unsupported register")
+            }           
         }
+
+        self.log(format!("          Compare: {} <-> {} ({})", self.val, comparand, target));
         
         self.toggle_cpu_bit(NEG_MASK, false);
         self.toggle_cpu_bit(ZERO_MASK, false);
@@ -235,16 +243,19 @@ impl<'a> LoadResult<'a>
 
         if res < 0
         {
+            self.log("          NEG -> TRUE".to_string());
             self.toggle_cpu_bit(NEG_MASK, true);
         }
 
         if res == 0
         {
+            self.log("          ZERO -> TRUE".to_string());
             self.toggle_cpu_bit(ZERO_MASK, true);
         }
 
         if res > 0
         {
+            self.log("          CARRY -> TRUE".to_string());
             self.toggle_cpu_bit(CARRY_MASK, true);
         }
         
@@ -260,7 +271,24 @@ pub struct StoreCommand<'a>
 }
 
 impl<'a> StoreCommand<'a>
-{     
+{   
+    fn read_register(&self, reg: RegisterName) -> u8
+    {
+        let val : u8;
+        match reg
+        {
+            RegisterName::A => val = self.origin.cpu.borrow().a,
+            RegisterName::X => val = self.origin.cpu.borrow().x,
+            RegisterName::Y => val = self.origin.cpu.borrow().y,
+            RegisterName::S => val = self.origin.cpu.borrow().s,
+            RegisterName::Status => val = self.origin.cpu.borrow().status,
+            _ => panic!("cannot read this register as 8 bit value")
+        }
+
+        self.log(format!("          {} -> #({})", reg, val));
+
+        val
+    }
     pub fn log(&self, message: String)
     {
         let cpu = self.origin.cpu.borrow();
@@ -301,6 +329,7 @@ impl<'a> StoreCommand<'a>
 
     pub fn to_immediate_address_with_offset(self) -> Opcode<'a>
     {
+        panic!("Unimplemented");
         self.origin
     }
 
@@ -320,6 +349,23 @@ impl<'a> StoreCommand<'a>
 
     pub fn to_zeropage_with_offset(self) -> Opcode<'a>
     {
+        panic!("Unimplemented");
+        self.origin
+    }
+
+    pub fn to_indirect_address(self, indirection: RegisterName) -> Opcode<'a>
+    {
+        let logstring: String;
+        {            
+            let storeAddition = self.read_register(indirection);
+            let mut cpu = self.origin.cpu.borrow_mut();
+            let pc = cpu.pc + 1;
+            let storeBase = cpu.mem.read_u16(pc as usize).unwrap();
+            let storeAdd = storeBase + cpu.y as u16;
+            cpu.mem.write_byte(storeAdd as usize, self.val as u8);
+            logstring = format!("           #({}) -> ({:#4x} + {}({}))", self.val, storeBase, storeAddition, indirection);
+        }
+        self.log(logstring);
         self.origin
     }
 }
@@ -411,7 +457,7 @@ impl<'a> Opcode<'a>
             let mut cpu = self.cpu.borrow_mut();
             res = cpu.mem.read_u16(adr as usize).unwrap();
         }
-        self.log(format!("          #({:#2x}) <- {:#4x}", res, adr));
+        self.log(format!("          LD16: #({:#4x}) <- {:#4x}", res, adr));
         res
     }
 
@@ -429,7 +475,7 @@ impl<'a> Opcode<'a>
         match result
         {
             Ok(val) => {
-                self.log(format!("          #({:#2x}) <- {:#4x}", val, adr));
+                self.log(format!("          LD: #({:#2x}) <- {:#4x}", val, adr));
                 LoadResult::new8(val, self)
             },
             Err(_) => 
@@ -443,7 +489,7 @@ impl<'a> Opcode<'a>
 
     fn read_register(&self, reg: RegisterName) -> u8
     {
-        let mut val : u8;
+        let val : u8;
         match reg
         {
             RegisterName::A => val = self.cpu.borrow().a,
