@@ -167,6 +167,11 @@ impl Rico
                                      .increments_pc(0)      // Is done internally ?!?
                                      .uses_cycles(6) },
             
+            0x60 => { opcode(rc_self).has_mnemonic("RTS".to_string())
+                                     .returns_from_subroutine()
+                                     .increments_pc(0)      // Is done internally ?!?
+                                     .uses_cycles(6) },
+            
             0xB0 => { opcode(rc_self).has_mnemonic("BCS".to_string())
                                      .loads_immediate_16bit()
                                      .jumps_relative_if_statusbit(CARRY_MASK, true)

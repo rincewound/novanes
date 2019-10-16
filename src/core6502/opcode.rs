@@ -141,7 +141,7 @@ impl<'a> LoadResult<'a>
         {
             //push pc to stack
             let mut cpu = self.origin.cpu.borrow_mut();
-            let nextpc = cpu.pc + 2;
+            let nextpc = cpu.pc + 3;
             cpu.pc = self.val;
             let write0 = cpu.s as usize;
             let write1 = (cpu.s - 1) as usize;
@@ -624,6 +624,26 @@ impl<'a> Opcode<'a>
                 cpu.status = cpu.status & !bit;
             }
         }
+        self
+    }
+
+    pub fn returns_from_subroutine(self) -> Opcode<'a>
+    {
+        {
+            //push pc to stack
+            let mut cpu = self.cpu.borrow_mut();
+            // let nextpc = cpu.pc + 2;
+            // cpu.pc = self.val;
+            let sp = cpu.s;
+            let write0 = cpu.mem.read_byte((sp + 1) as usize).unwrap();
+            let write1 = cpu.mem.read_byte((sp + 2) as usize).unwrap();
+            // cpu.mem.write_byte(write0, (nextpc & 0xFF) as u8);
+            // cpu.mem.write_byte(write1, ((nextpc & 0xFF00) >> 8) as u8);
+            cpu.s += 2;
+            let adr = ((write0 as u16) << 8) + write1 as u16;
+            cpu.pc = adr;
+        }
+        
         self
     }
 }
