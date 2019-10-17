@@ -64,7 +64,9 @@ impl Memory for ppu
 
     fn write_byte(&mut self, address: usize, data: u8) -> MemError
     {
-        match address
+        let actualAddress = address + 0x2000;
+
+        match actualAddress
         {
             0x2000 => {
                 self.log(format!("          PPU.Ctrl1 -> {:#2x}", data));
@@ -77,7 +79,7 @@ impl Memory for ppu
             0x2002 => {
                 panic!("Cannot write to PPU.Status");
             },
-            _ => panic!("Invalid address")
+            _ => panic!(format!("Invalid address: {} ", address))
         }
 
         // if address < self.data.len()

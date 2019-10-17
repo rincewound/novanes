@@ -3,6 +3,7 @@ use crate::core6502::*;
 
 use std::cell::RefCell;
 use std::fmt::{Display, Formatter, Result};
+use std::convert::*;
 
 pub struct Opcode<'a>
 {
@@ -74,6 +75,22 @@ impl<'a> LoadResult<'a>
             RegisterName::Status => self.origin.cpu.borrow_mut().status = self.val as u8,
         }
         self.log(format!("          V({:#2x}) -> {}", self.val, target));
+        self.origin
+    }
+
+    pub fn performs_bit_test(self) -> Opcode<'a>
+    {
+        self.toggle_cpu_bit(NEG_MASK, (self.val as u8 & 0b10000000) != 0);
+        self.toggle_cpu_bit(OVERFLOW_MASK, (self.val as u8 & 0b01000000) != 0);
+        let result: u8;
+
+        {
+            let cpu = self.origin.cpu.borrow_mut();
+            let a = cpu.a;
+            result = a & self.val as u8;            
+        }
+        self.toggle_cpu_bit(ZERO_MASK, result == 0);
+
         self.origin
     }
 
@@ -360,10 +377,29 @@ impl<'a> StoreCommand<'a>
             let storeAddition = self.read_register(indirection);
             let mut cpu = self.origin.cpu.borrow_mut();
             let pc = cpu.pc + 1;
-            let storeBase = cpu.mem.read_u16(pc as usize).unwrap();
+            //let storeBase = cpu.mem.read_u16(pc as usize).unwrap();
+            let store0 = cpu.mem.read_byte(pc as usize).unwrap() as u16;
+            let store1 = cpu.mem.read_byte((pc + 1) as usize).unwrap() as u16;
+            let storeBase = (store1 << 8) + store0;
             let storeAdd = storeBase + cpu.y as u16;
             cpu.mem.write_byte(storeAdd as usize, self.val as u8);
             logstring = format!("           #({}) -> ({:#4x} + {}({}))", self.val, storeBase, storeAddition, indirection);
+        }
+        self.log(logstring);
+        self.origin
+    }
+
+    pub fn to_immediate_address_with_register_offset(self, indirection: RegisterName) -> Opcode<'a>
+    {
+        let logstring: String;
+        {            
+            let storeAddition = self.read_register(indirection) as u16;
+            let mut cpu = self.origin.cpu.borrow_mut();
+            let pc = cpu.pc +1 as u16;
+            let targetBase = cpu.mem.read_u16(pc as usize).unwrap() + storeAddition;
+
+            cpu.mem.write_byte(targetBase as usize, self.val as u8);
+            logstring = format!("           #({}) -> ({:#4x} + {}({}))", self.val, targetBase, storeAddition, indirection);
         }
         self.log(logstring);
         self.origin
@@ -395,45 +431,51 @@ impl<'a> Opcode<'a>
         self
     }
 
-    pub fn decrements_register(self, reg: RegisterName) -> Opcode<'a>
+    fn change_reg(self, reg: RegisterName, delta: i8) -> Opcode<'a>
     {
         {
             let mut cpu = self.cpu.borrow_mut();
-            let mut val: u8;
+            let mut val: i16;
 
             match reg
             {
-                RegisterName::A => val = cpu.a,
-                RegisterName::X => val = cpu.x,
-                RegisterName::Y => val = cpu.y,
+                RegisterName::A => val = cpu.a as i16,
+                RegisterName::X => val = cpu.x as i16,
+                RegisterName::Y => val = cpu.y as i16,
                 _ => panic!("Unsupported register")
             };
 
-            if val > 0
+            val += delta as i16;
+
+            match val 
             {
-                val -= 1;
-                if val == 0
-                {
-                    cpu.status |= ZERO_MASK;
-                }                
+                y if y == 0 => cpu.status |= ZERO_MASK,
+                y if y < 0 => {cpu.status |= NEG_MASK; val = 0xFF},
+                y if y > 255 => {cpu.status |= OVERFLOW_MASK; val -= 255}
+                _ => ()
             }
-            else
-            {
-                val = 0xFF;
-                
-                cpu.status |= NEG_MASK;
-            }
+
+            let val8: u8 = (val & 0xFF) as u8;
 
             match reg
             {
-                RegisterName::A => cpu.a = val,
-                RegisterName::X => cpu.x = val,
-                RegisterName::Y => cpu.y = val,
+                RegisterName::A => cpu.a = val8,
+                RegisterName::X => cpu.x = val8,
+                RegisterName::Y => cpu.y = val8,
                 _ => panic!("Unsupported register")
             };
         }
-
         self
+    }
+
+    pub fn decrements_register(self, reg: RegisterName) -> Opcode<'a>
+    {
+        self.change_reg(reg, -1)
+    }
+
+    pub fn increments_register(self, reg: RegisterName) -> Opcode<'a>
+    {
+        self.change_reg(reg, 1)
     }
 
     pub fn has_mnemonic(self, nmonic: String ) -> Opcode<'a>

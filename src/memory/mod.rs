@@ -82,7 +82,7 @@ impl Memory for CompositeMemory
         if let Some(m) = m {
             let err = format!("          {:#4x} -> {:#2x}", address, data);
             println!("{}", err);
-            return m.handler.write_byte(address, data);
+            return m.handler.write_byte(address - m.range.begin, data);
         }
 
         let err = format!("Memory.WriteByte: {:#4x} -> Bad Addr", address);

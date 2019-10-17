@@ -99,8 +99,8 @@ impl Rico
                     
                     let dummypc = self.pc;
 
-                    let breakAdr = 0x800A;
-                    if self.pc == 0x8020
+                    let breakAdr =  0x90e6;
+                    if self.pc == breakAdr
                     {
                         self.log("Breakpoint hit.".to_string());
                     }
@@ -154,6 +154,12 @@ impl Rico
             0x00 => { opcode(rc_self).has_mnemonic("NOP".to_string())
                                      .increments_pc(1)
                                      .uses_cycles(1) },
+            
+            0x09 => { opcode(rc_self).has_mnemonic("ORA #$nn".to_string())
+                                     .loads_immediate()
+                                     .or_with_accumulator()
+                                     .increments_pc(2)
+                                     .uses_cycles(2) },
 
             0x10 => { opcode(rc_self).has_mnemonic("BPL".to_string())
                                      .loads_immediate()
@@ -166,6 +172,12 @@ impl Rico
                                      .jumps_to_subroutine()
                                      .increments_pc(0)      // Is done internally ?!?
                                      .uses_cycles(6) },
+            
+            0x2C => { opcode(rc_self).has_mnemonic("BIT".to_string())
+                            .loads_immediate_16bit()
+                            .performs_bit_test()
+                            .increments_pc(3)
+                            .uses_cycles(4) },
             
             0x60 => { opcode(rc_self).has_mnemonic("RTS".to_string())
                                      .returns_from_subroutine()
@@ -326,6 +338,12 @@ impl Rico
                         .to_indirect_address(RegisterName::Y)
                         .increments_pc(2)
                         .uses_cycles(6)}
+
+            0x99 => {opcode(rc_self).has_mnemonic("STA $hhll, Y".to_string())
+                        .stores(RegisterName::A)
+                        .to_immediate_address_with_register_offset(RegisterName::Y)
+                        .increments_pc(3)
+                        .uses_cycles(5)}
             
             0x86 => {opcode(rc_self).has_mnemonic("STX $ll".to_string())
                         .stores(RegisterName::X)
@@ -358,6 +376,11 @@ impl Rico
 
             0x88 => {opcode(rc_self).has_mnemonic("DEY".to_string())
                         .decrements_register(RegisterName::Y)
+                        .increments_pc(1)
+                        .uses_cycles(2)}
+            
+            0xC8 => {opcode(rc_self).has_mnemonic("INY".to_string())
+                        .increments_register(RegisterName::Y)
                         .increments_pc(1)
                         .uses_cycles(2)}
 
