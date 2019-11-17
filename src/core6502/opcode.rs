@@ -170,6 +170,16 @@ impl<'a> LoadResult<'a>
         self.origin
     }
 
+    pub fn jumps_to_address(self) -> Opcode<'a>
+    {
+        {
+            let mut cpu = self.origin.cpu.borrow_mut();
+            cpu.pc = self.val;
+        }
+        
+        self.origin
+    }
+
     pub fn subtracts_from_accumulator(self) -> Opcode<'a>
     {
         let mut tmpval : i16 = 0;

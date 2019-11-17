@@ -79,7 +79,20 @@ impl Memory for ppu
             0x2002 => {
                 panic!("Cannot write to PPU.Status");
             },
-            _ => panic!(format!("Invalid address: {} ", address))
+             0x2005=> {
+                self.log(format!("          PPU.Scroll -> {:#2x}", data));
+                return MemError::Ok;
+            },
+            0x2006 => {
+                self.log(format!("          PPU.Addr -> {:#2x}", data));
+                return MemError::Ok;
+            },
+            0x2007 => {
+                self.log(format!("          PPU.Data -> {:#2x}", data));
+                return MemError::Ok;
+            },
+
+            _ => panic!(format!("Invalid address: {:#4x} ", actualAddress))
         }
 
         // if address < self.data.len()

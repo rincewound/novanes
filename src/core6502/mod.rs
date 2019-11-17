@@ -179,6 +179,18 @@ impl Rico
                             .increments_pc(3)
                             .uses_cycles(4) },
             
+            0x29 => { opcode(rc_self).has_mnemonic("AND#".to_string())
+                .loads_immediate()
+                .and_with_accumulator()
+                .increments_pc(2)
+                .uses_cycles(2) },
+            
+            0x4C => { opcode(rc_self).has_mnemonic("JMP".to_string())
+                .loads_immediate_16bit()
+                .jumps_to_address()
+                .increments_pc(3)
+                .uses_cycles(3) },
+            
             0x60 => { opcode(rc_self).has_mnemonic("RTS".to_string())
                                      .returns_from_subroutine()
                                      .increments_pc(0)      // Is done internally ?!?
