@@ -155,27 +155,25 @@ impl<'a> LoadResult<'a>
 
     pub fn jumps_to_subroutine(self) -> Opcode<'a>
     {
-        {
-            //push pc to stack
-            let mut cpu = self.origin.cpu.borrow_mut();
-            let nextpc = cpu.pc + 3;
-            cpu.pc = self.val;
-            let write0 = cpu.s as usize;
-            let write1 = (cpu.s - 1) as usize;
-            cpu.mem.write_byte(write0, (nextpc & 0xFF) as u8);
-            cpu.mem.write_byte(write1, ((nextpc & 0xFF00) >> 8) as u8);
-            cpu.s -= 2;
-        }
+        //push pc to stack
+        let mut cpu = self.origin.cpu.borrow_mut();
+        let nextpc = cpu.pc + 3;
+        cpu.pc = self.val;
+        let write0 = cpu.s as usize;
+        let write1 = (cpu.s - 1) as usize;
+        cpu.mem.write_byte(write0, (nextpc & 0xFF) as u8);
+        cpu.mem.write_byte(write1, ((nextpc & 0xFF00) >> 8) as u8);
+        cpu.s -= 2;
+        drop(cpu);
         
         self.origin
     }
 
     pub fn jumps_to_address(self) -> Opcode<'a>
     {
-        {
-            let mut cpu = self.origin.cpu.borrow_mut();
-            cpu.pc = self.val;
-        }
+        let mut cpu = self.origin.cpu.borrow_mut();
+        cpu.pc = self.val;
+        drop(cpu);
         
         self.origin
     }
@@ -184,27 +182,26 @@ impl<'a> LoadResult<'a>
     {
         let mut tmpval : i16 = 0;
         let mut set_carry = false;
+        let mut cpu = self.origin.cpu.borrow_mut();
 
+        tmpval += cpu.a as i16 - self.val as i16;
+
+        if cpu.status & CARRY_MASK == CARRY_MASK
         {
-            let mut cpu = self.origin.cpu.borrow_mut();
-
-            tmpval += cpu.a as i16 - self.val as i16;
-
-            if cpu.status & CARRY_MASK == CARRY_MASK
-            {
-                tmpval |= 0x80;
-            }
-            
-            if tmpval < 0
-            {
-                tmpval = 256 - tmpval;
-                set_carry = true;
-                // todo: Set overflow flag here!
-            }
-
-            let aval = tmpval as u16 & 0xFF;
-            cpu.a = aval as u8;                 
+            tmpval |= 0x80;
         }
+        
+        if tmpval < 0
+        {
+            tmpval = 256 - tmpval;
+            set_carry = true;
+            // todo: Set overflow flag here!
+        }
+
+        let aval = tmpval as u16 & 0xFF;
+        cpu.a = aval as u8;                 
+
+        drop(cpu);
 
         self.toggle_cpu_bit(ZERO_MASK, (tmpval & 0xFF) == 0);
         self.toggle_cpu_bit(CARRY_MASK, set_carry);   
@@ -214,37 +211,41 @@ impl<'a> LoadResult<'a>
 
     pub fn xor_with_accumulator(self) -> Opcode<'a>
     {
-        let result: u8;
-        {
-            let mut cpu = self.origin.cpu.borrow_mut();
-            result = cpu.a ^ self.val as u8;
-            cpu.a = result;            
-        }
+        let mut cpu = self.origin.cpu.borrow_mut();
+        let result = cpu.a ^ self.val as u8;
+        cpu.a = result;            
+        drop(cpu);
         self.toggle_cpu_bit(ZERO_MASK, result == 0);
         self.origin
     }
 
     pub fn or_with_accumulator(self) -> Opcode<'a>
     {
-        let result: u8;
-        {
-            let mut cpu = self.origin.cpu.borrow_mut();
-            result = cpu.a | self.val as u8;
-            cpu.a = result;            
-        }
+        let mut cpu = self.origin.cpu.borrow_mut();
+        let result = cpu.a | self.val as u8;
+        cpu.a = result;            
+        drop(cpu);
         self.toggle_cpu_bit(ZERO_MASK, result == 0);
         self.origin
     }
 
     pub fn and_with_accumulator(self) -> Opcode<'a>
     {
-        let result: u8;
-        {
-            let mut cpu = self.origin.cpu.borrow_mut();
-            result = cpu.a & self.val as u8;
-            cpu.a = result;            
-        }
+
+        let mut cpu = self.origin.cpu.borrow_mut();
+        let result = cpu.a & self.val as u8;
+        cpu.a = result;            
+        drop(cpu);
         self.toggle_cpu_bit(ZERO_MASK, result == 0);
+        self.origin
+    }
+
+    pub fn increments_address(self, inc: u8) -> Opcode<'a>
+    {
+        let mut cpu = self.origin.cpu.borrow_mut();
+        let mut memval = cpu.mem.read_byte(self.val as usize).unwrap() + inc;
+        cpu.mem.write_byte(self.val as usize, memval);
+        drop(cpu);
         self.origin
     }
 
@@ -252,16 +253,15 @@ impl<'a> LoadResult<'a>
     {
         let res : i16;
         let comparand : i16;
-        {
-            let cpu = self.origin.cpu.borrow();
-            match target{
-                RegisterName::A => {res = cpu.a as i16 - self.val as i16; comparand = cpu.a as i16},
-                RegisterName::X => {res = cpu.x as i16 - self.val as i16; comparand = cpu.x as i16},
-                RegisterName::Y => {res = cpu.y as i16 - self.val as i16; comparand = cpu.y as i16},
-                _ => panic!("unsupported register")
-            }           
-        }
+        let cpu = self.origin.cpu.borrow();
+        match target{
+            RegisterName::A => {res = cpu.a as i16 - self.val as i16; comparand = cpu.a as i16},
+            RegisterName::X => {res = cpu.x as i16 - self.val as i16; comparand = cpu.x as i16},
+            RegisterName::Y => {res = cpu.y as i16 - self.val as i16; comparand = cpu.y as i16},
+            _ => panic!("unsupported register")
+        }           
 
+        drop(cpu);
         self.log(format!("          Compare: {} <-> {} ({})", self.val, comparand, target));
         
         self.toggle_cpu_bit(NEG_MASK, false);

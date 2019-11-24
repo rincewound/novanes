@@ -188,8 +188,14 @@ impl Rico
             0x4C => { opcode(rc_self).has_mnemonic("JMP".to_string())
                 .loads_immediate_16bit()
                 .jumps_to_address()
-                .increments_pc(3)
+                .increments_pc(0)
                 .uses_cycles(3) },
+            
+            0xEE => { opcode(rc_self).has_mnemonic("INC $HHLL".to_string())
+                .loads_immediate_16bit()
+                .increments_address(1)
+                .increments_pc(3)
+                .uses_cycles(6) },
             
             0x60 => { opcode(rc_self).has_mnemonic("RTS".to_string())
                                      .returns_from_subroutine()
