@@ -657,6 +657,11 @@ impl<'a> Opcode<'a>
         self.load_u8_from_mem(load_adr_base)
     }
 
+    pub fn loads_direct_value(self, val: u16) -> LoadResult<'a>
+    {
+        LoadResult::new16(val, self)
+    }
+
     pub fn stores(self, source: RegisterName) -> StoreCommand<'a>
     {
         let val = self.read_register(source);

@@ -66,10 +66,11 @@ fn main() {
     let ppu = ppu::ppu::new(logger.clone());
     let ram = memory::RawMemory::new(0x2000);
     let mut m = memory::RawMemory::new(0x8000);
+    load_rom("./roms/smb1.nes".to_string(), &mut m);
     let mut memmap = memory::CompositeMemory::new();
     
     // ToDo: Add peripherals as ranges as well.
-    memmap.register_range(0x0000, 0x2000, Box::new(ram));
+    memmap.register_range(0x0000, 0x1FFF, Box::new(ram));
     memmap.register_range(0x8000, 0x8000 + 0x8000, Box::new(m));
     memmap.register_range(0x2000, 0x2000 + 0x0008, Box::new(ppu));
 

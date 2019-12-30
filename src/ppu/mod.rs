@@ -123,6 +123,10 @@ impl Memory for ppu
 
             if self.line > VISIBLE_SCANLINES
             {
+                if(self.status & VBlankBit) == 0
+                {
+                    // Just entered VBlank, generate NMI.
+                }
                 self.status |= VBlankBit;                
             }
 
