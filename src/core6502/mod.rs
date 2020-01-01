@@ -26,13 +26,6 @@ const NMI_MSK: u8 = 0b001;
 const IRQ_MSK: u8 = 0b010;
 const RES_MSK: u8 = 0b100;
 
-struct OpCodeImpl
-{
-    name: String,
-    implementation: fn() -> u16
-}
-
-
 pub struct Rico
 {
     mem: Box<dyn Memory>,
@@ -138,10 +131,23 @@ impl Rico
                      }
             }
 
-            self.check_irq();                    
+                               
         }
 
-        self.mem.tick(num_cycles);    
+        // This should do the trick for the PPU - the crappy
+        // design decision to represent the PPU as a bit of
+        // memory continues to haunt us.
+        let tickRes = self.mem.tick(num_cycles);    
+        match tickRes
+        {
+            MemTickResult::Ok => self.pending_irq = 0,
+            MemTickResult::IRQ(__irq) => self.pending_irq = __irq
+        }
+
+        // Note: We have to make sure, that we avoid recursively
+        // triggering IRQ while IRQ processing is still active.
+        self.check_irq(); 
+
     }
 
     pub fn print_cpu_state(&self)
@@ -194,18 +200,21 @@ impl Rico
                     => PPU needs a scanline clock, i.e. it needs to be called every
                        114 cycles to be able to exit vblank correctly.
              */
+            self.log(format!("NMI IRQ Triggered"));
             self.pc = self.mem.read_u16(NMI_VEC).unwrap();
             return;
         }
 
         if(self.pending_irq & IRQ_MSK) != 0
         {
+            self.log(format!("Unknown IRQ Triggered"));
             self.pc = self.mem.read_u16(IRQ_VEC).unwrap();
             return;
         }
 
         if(self.pending_irq & RES_MSK) != 0
         {
+            self.log(format!("Reset IRQ Triggered"));
             self.pc = self.mem.read_u16(RES_VEC).unwrap();
             return;
         }
@@ -354,6 +363,16 @@ impl Rico
                                     .increments_pc(3)
                                     .uses_cycles(4)},
 
+            0xAC => { opcode(rc_self).has_mnemonic("LDY $hhll".to_string())
+                                    .loads_indirect(0)
+                                    .to(RegisterName::Y)
+                                    .increments_pc(3)
+                                    .uses_cycles(4)},
+            0xAE => { opcode(rc_self).has_mnemonic("LDX $hhll".to_string())
+                                    .loads_indirect(0)
+                                    .to(RegisterName::X)
+                                    .increments_pc(3)
+                                    .uses_cycles(4)},
 
             // Transfer instructions:
             0xAA => {opcode(rc_self).has_mnemonic("TAX".to_string())
@@ -500,7 +519,6 @@ impl Rico
 mod opcodetests 
 {
     use std::panic;
-    //use super::memory::*;
     use crate::core6502::*;
     
     fn setup(opcode: u8) -> crate::core6502::Rico

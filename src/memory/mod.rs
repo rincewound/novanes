@@ -6,6 +6,12 @@ pub enum MemError
     BadAddress
 }
 
+pub enum MemTickResult
+{
+    Ok,
+    IRQ(u8)
+}
+
 pub trait Memory
 {
     fn read_byte(&mut self, address: usize) -> Result<u8, MemError>;
@@ -31,7 +37,7 @@ pub trait Memory
         //res
     }
 
-    fn tick(&mut self, clock_ticks: u32){}
+    fn tick(&mut self, clock_ticks: u32) -> MemTickResult{ MemTickResult::Ok }
 }
 
 pub struct RawMemory
@@ -90,13 +96,21 @@ impl Memory for CompositeMemory
         MemError::BadAddress
     }
 
-    fn tick(&mut self, clock_ticks: u32)
+    fn tick(&mut self, clock_ticks: u32) -> MemTickResult
     {
         let it = self.handlers.iter_mut();
+        let mut result = MemTickResult::Ok;
         for m in it
         {
-            m.handler.tick(clock_ticks);
+            let res = m.handler.tick(clock_ticks);
+            match result
+            {
+                MemTickResult::Ok => result = res,
+                MemTickResult::IRQ(s) => break
+            }
+
         }
+        result
     }
 }
 

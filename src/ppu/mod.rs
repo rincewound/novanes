@@ -79,6 +79,10 @@ impl Memory for ppu
             0x2002 => {
                 panic!("Cannot write to PPU.Status");
             },
+            0x2003 => {
+                self.log(format!("          PPU.OAMADR -> {:#2x}", data));
+                return MemError::Ok;
+            },
              0x2005=> {
                 self.log(format!("          PPU.Scroll -> {:#2x}", data));
                 return MemError::Ok;
@@ -105,7 +109,7 @@ impl Memory for ppu
         // MemError::BadAddress
     }
 
-    fn tick(&mut self, clock_ticks: u32)
+    fn tick(&mut self, clock_ticks: u32) -> MemTickResult
     {
         // the cpu has run clock_ticks cycles. The ppu may now draw
         // clock_ticks * 3 pixels
@@ -127,11 +131,11 @@ impl Memory for ppu
                 {
                     // Just entered VBlank, generate NMI.
                 }
-                self.status |= VBlankBit;                
+                self.status |= VBlankBit; 
+                return MemTickResult::IRQ( 0b001 as u8)
             }
 
         }
-
-        
+        MemTickResult::Ok        
     }
 }
