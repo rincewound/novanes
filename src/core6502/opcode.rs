@@ -129,23 +129,23 @@ impl<'a> LoadResult<'a>
     }
 
     pub fn jumps_relative_if_statusbit(self, statusbit: u8, val: bool) -> Opcode<'a>
-    {
+    {       
         let mut logstring = String::from("");
-        let mut isBitSet: bool = false;
+        let is_bit_set: bool;
         {
             let mut cpu = self.origin.cpu.borrow_mut();
-            let actualVal = self.val as i8;
-            isBitSet = (cpu.status & statusbit) != 0;
+            let actual_val = self.val as i8;
+            is_bit_set = (cpu.status & statusbit) != 0;
 
-            if isBitSet == val
+            if is_bit_set == val
             {                
-                let next_pc = (cpu.pc as i32 + actualVal as i32) as u16;                
+                let next_pc = (cpu.pc as i32 + actual_val as i32) as u16;                
                 cpu.pc = next_pc;                
-                logstring = format!("          {:#4x} + {} = #({:#4x}) -> PC", cpu.pc, actualVal, next_pc);                              
+                logstring = format!("          {:#4x} + {} = #({:#4x}) -> PC", cpu.pc, actual_val, next_pc);                              
             }
         }
 
-        if isBitSet == val
+        if is_bit_set == val
         {
             self.log(logstring);
         }
@@ -173,7 +173,6 @@ impl<'a> LoadResult<'a>
     {
         let mut cpu = self.origin.cpu.borrow_mut();
         let write0 = cpu.s as usize;
-        let write1 = (cpu.s - 1) as usize;
         cpu.mem.write_byte(write0, self.val as u8);
         cpu.s -= 1;
         drop(cpu);
@@ -254,7 +253,7 @@ impl<'a> LoadResult<'a>
     pub fn increments_address(self, inc: u8) -> Opcode<'a>
     {
         let mut cpu = self.origin.cpu.borrow_mut();
-        let mut memval = cpu.mem.read_byte(self.val as usize).unwrap() + inc;
+        let memval = cpu.mem.read_byte(self.val as usize).unwrap() + inc;
         cpu.mem.write_byte(self.val as usize, memval);
         drop(cpu);
         self.origin
@@ -353,14 +352,12 @@ impl<'a> StoreCommand<'a>
 
     pub fn to_immediate_address(self) -> Opcode<'a>
     {        
-        let logstring: String;
-        {        
-            let mut cpu = self.origin.cpu.borrow_mut();
-            let readAdr = (cpu.pc + 1) as usize;
-            let adr = cpu.mem.read_u16(readAdr).unwrap() as usize;
-            logstring = format!("       #({}) -> #({})", self.val as u8, adr);
-            cpu.mem.write_byte(adr, self.val as u8);
-        }
+        let mut cpu = self.origin.cpu.borrow_mut();
+        let read_adr = (cpu.pc + 1) as usize;
+        let adr = cpu.mem.read_u16(read_adr).unwrap() as usize;                
+        cpu.mem.write_byte(adr, self.val as u8);
+        drop(cpu);
+        let logstring = format!("       #({}) -> #({})", self.val as u8, adr);
         self.log(logstring);
         self.origin
     }
@@ -373,15 +370,15 @@ impl<'a> StoreCommand<'a>
 
     pub fn to_zeropage(self) -> Opcode<'a>
     { 
-        let logstring: String;
-        {
-            let mut cpu = self.origin.cpu.borrow_mut();
-            let readAdr = (cpu.pc + 1) as usize;
-            let adr = cpu.mem.read_byte(readAdr).unwrap() as usize;
-            logstring = format!("          #({}) -> {:#4x}", self.val as u8, adr);
-            cpu.mem.write_byte(adr, self.val as u8);
-        }
+        let mut cpu = self.origin.cpu.borrow_mut();
+        let read_adr = (cpu.pc + 1) as usize;
+        let adr = cpu.mem.read_byte(read_adr).unwrap() as usize;
+        let logstring = format!("          #({}) -> {:#4x}", self.val as u8, adr);
+        cpu.mem.write_byte(adr, self.val as u8);
+        drop(cpu);
         self.log(logstring);
+        
+        
         self.origin
     }
 
@@ -392,37 +389,31 @@ impl<'a> StoreCommand<'a>
     }
 
     pub fn to_indirect_address(self, indirection: RegisterName) -> Opcode<'a>
-    {
-        let logstring: String;
-        {            
-            let storeAddition = self.read_register(indirection);
-            let mut cpu = self.origin.cpu.borrow_mut();
-            let pc = cpu.pc + 1;
-            //let storeBase = cpu.mem.read_u16(pc as usize).unwrap();
-            let store0 = cpu.mem.read_byte(pc as usize).unwrap() as u16;
-            let store1 = cpu.mem.read_byte((pc + 1) as usize).unwrap() as u16;
-            let storeBase = (store1 << 8) + store0;
-            let storeAdd = storeBase + cpu.y as u16;
-            cpu.mem.write_byte(storeAdd as usize, self.val as u8);
-            logstring = format!("           #({}) -> ({:#4x} + {}({}))", self.val, storeBase, storeAddition, indirection);
-        }
-        self.log(logstring);
+    {     
+        let store_addition = self.read_register(indirection);
+        let mut cpu = self.origin.cpu.borrow_mut();
+        let pc = cpu.pc + 1;
+        let store0 = cpu.mem.read_byte(pc as usize).unwrap() as u16;
+        let store1 = cpu.mem.read_byte((pc + 1) as usize).unwrap() as u16;
+        let store_base = (store1 << 8) + store0;
+        let store_add = store_base + store_addition as u16;
+        cpu.mem.write_byte(store_add as usize, self.val as u8);
+        drop(cpu);
+        let logstring = format!("           #({}) -> ({:#4x} + {}({}))", self.val, store_base, store_addition, indirection);
+        self.log(logstring);        
         self.origin
     }
 
     pub fn to_immediate_address_with_register_offset(self, indirection: RegisterName) -> Opcode<'a>
-    {
-        let logstring: String;
-        {            
-            let storeAddition = self.read_register(indirection) as u16;
-            let mut cpu = self.origin.cpu.borrow_mut();
-            let pc = cpu.pc +1 as u16;
-            let targetBase = cpu.mem.read_u16(pc as usize).unwrap() + storeAddition;
-
-            cpu.mem.write_byte(targetBase as usize, self.val as u8);
-            logstring = format!("           #({}) -> ({:#4x} + {}({}))", self.val, targetBase, storeAddition, indirection);
-        }
-        self.log(logstring);
+    {         
+        let store_addition = self.read_register(indirection) as u16;
+        let mut cpu = self.origin.cpu.borrow_mut();
+        let pc = cpu.pc +1 as u16;
+        let target_base = cpu.mem.read_u16(pc as usize).unwrap() + store_addition;
+        cpu.mem.write_byte(target_base as usize, self.val as u8);
+        drop(cpu);
+        let logstring = format!("           #({}) -> ({:#4x} + {}({}))", self.val, target_base, store_addition, indirection);
+        self.log(logstring);        
         self.origin
     }
 }
@@ -500,26 +491,20 @@ impl<'a> Opcode<'a>
     }
 
     pub fn has_mnemonic(self, nmonic: String ) -> Opcode<'a>
-    {
-        {
-            let mut pc: u16 = 0;
-            {
-            let mut cpu = self.cpu.borrow_mut();
-            cpu.current_opcode_nmonic = nmonic.clone();
-            pc = cpu.pc;
-            }
-            self.log(format!("{:#4x}    {}", pc, nmonic));
-        }
+    {        
+        let mut cpu = self.cpu.borrow_mut();
+        cpu.current_opcode_nmonic = nmonic.clone();
+        let pc = cpu.pc;
+        drop(cpu);
+        self.log(format!("{:#4x}    {}", pc, nmonic));        
         self
     }
 
     fn load_u16(&self, adr: u16) -> u16
     {
-        let mut res: u16 = 0;
-        {
-            let mut cpu = self.cpu.borrow_mut();
-            res = cpu.mem.read_u16(adr as usize).unwrap();
-        }
+        let mut cpu = self.cpu.borrow_mut();
+        let res = cpu.mem.read_u16(adr as usize).unwrap();        
+        drop(cpu);
         self.log(format!("          LD16: #({:#4x}) <- {:#4x}", res, adr));
         res
     }
@@ -594,8 +579,8 @@ impl<'a> Opcode<'a>
         {
             load_adr = self.cpu.borrow().pc + 1;
         }
-        let loadVal = self.load_u16(load_adr);
-        LoadResult::new16(loadVal, self) 
+        let load_val = self.load_u16(load_adr);
+        LoadResult::new16(load_val, self) 
     }
 
     pub fn loads_indirect(self, offset: u8) -> LoadResult<'a>
@@ -692,46 +677,42 @@ impl<'a> Opcode<'a>
 
     pub fn toggles_cpu_bit(self, bit: u8, newval: bool)-> Opcode<'a>
     {
+        
+        let mut cpu = self.cpu.borrow_mut();
+        if newval
         {
-            let mut cpu = self.cpu.borrow_mut();
-            if newval
-            {
-                cpu.status |= bit;
-            }
-            else
-            {
-                cpu.status = cpu.status & !bit;
-            }
+            cpu.status |= bit;
         }
+        else
+        {
+            cpu.status = cpu.status & !bit;
+        }
+        drop(cpu);
         self
     }
 
     pub fn returns_from_subroutine(self) -> Opcode<'a>
-    {
-        {
-            //push pc to stack
-            let mut cpu = self.cpu.borrow_mut();
-            let sp = cpu.s;
-            let write0 = cpu.mem.read_byte((sp + 1) as usize).unwrap();
-            let write1 = cpu.mem.read_byte((sp + 2) as usize).unwrap();
-            cpu.s += 2;
-            let adr = ((write0 as u16) << 8) + write1 as u16;
-            cpu.pc = adr;
-        }
-        
+    {        
+        //push pc to stack
+        let mut cpu = self.cpu.borrow_mut();
+        let sp = cpu.s;
+        let write0 = cpu.mem.read_byte((sp + 1) as usize).unwrap();
+        let write1 = cpu.mem.read_byte((sp + 2) as usize).unwrap();
+        cpu.s += 2;
+        let adr = ((write0 as u16) << 8) + write1 as u16;
+        cpu.pc = adr;
+        drop(cpu);
         self
     }
 
-
-
     pub fn shifts_accumulator_into_carry(self) -> Opcode<'a>
     {
-        let regA  = self.read_register(RegisterName::A);
-        let carryNew = (regA & 0x80) != 0;
-        let regANew = regA << 1;
+        let reg_a  = self.read_register(RegisterName::A);
+        let carry_new = (reg_a & 0x80) != 0;
+        let reg_anew = reg_a << 1;
         let mut cpu = self.cpu.borrow_mut();
         
-        if carryNew
+        if carry_new
         {
             cpu.status |= CARRY_MASK;
         }
@@ -740,7 +721,7 @@ impl<'a> Opcode<'a>
             cpu.status &= !CARRY_MASK;
         }
 
-        cpu.a = regANew;
+        cpu.a = reg_anew;
 
         drop(cpu);
 
@@ -774,14 +755,14 @@ mod store_command_tests
         assert!(result.is_ok())
     } 
 
-    fn CheckHasValAt(sr: &Opcode, adr: usize, val: u8)
+    fn check_has_val_at(sr: &Opcode, adr: usize, val: u8)
     {
-        let result = sr.cpu.borrow_mut().mem.read_byte(0x1020);
+        let result = sr.cpu.borrow_mut().mem.read_byte(adr);
 
         match result
         {
             Ok(v) => assert_eq!(v, val),
-            Err(e) => assert_eq!(true, false)
+            Err(_) => assert_eq!(true, false)
         }
     }
 
@@ -793,7 +774,7 @@ mod store_command_tests
             sr.origin.cpu.borrow_mut().mem.write_byte(0x8001, 0x20);
             sr.origin.cpu.borrow_mut().mem.write_byte(0x8002, 0x10);
             let oc = sr.to_immediate_address();
-            CheckHasValAt(&oc, 0x1020, 0xAB)            
+            check_has_val_at(&oc, 0x1020, 0xAB)            
         })
     }
 

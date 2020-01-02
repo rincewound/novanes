@@ -37,7 +37,7 @@ pub trait Memory
         //res
     }
 
-    fn tick(&mut self, clock_ticks: u32) -> MemTickResult{ MemTickResult::Ok }
+    fn tick(&mut self, _clock_ticks: u32) -> MemTickResult{ MemTickResult::Ok }
 }
 
 pub struct RawMemory
@@ -106,7 +106,7 @@ impl Memory for CompositeMemory
             match result
             {
                 MemTickResult::Ok => result = res,
-                MemTickResult::IRQ(s) => break
+                MemTickResult::IRQ(_) => break
             }
 
         }

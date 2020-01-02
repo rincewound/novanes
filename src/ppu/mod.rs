@@ -64,9 +64,9 @@ impl Memory for ppu
 
     fn write_byte(&mut self, address: usize, data: u8) -> MemError
     {
-        let actualAddress = address + 0x2000;
+        let actual_address = address + 0x2000;
 
-        match actualAddress
+        match actual_address
         {
             0x2000 => {
                 self.log(format!("          PPU.Ctrl1 -> {:#2x}", data));
@@ -96,7 +96,7 @@ impl Memory for ppu
                 return MemError::Ok;
             },
 
-            _ => panic!(format!("Invalid address: {:#4x} ", actualAddress))
+            _ => panic!(format!("Invalid address: {:#4x} ", actual_address))
         }
 
         // if address < self.data.len()
@@ -127,9 +127,9 @@ impl Memory for ppu
 
             if self.line > VISIBLE_SCANLINES
             {
-                let statusCpy = self.status;
+                let status_cpy = self.status;
                 self.status |= VBlankBit;                 
-                if(statusCpy & VBlankBit) == 0
+                if(status_cpy & VBlankBit) == 0
                 {
                     // Just entered VBlank, generate NMI.
                     return MemTickResult::IRQ( 0b001 as u8)

@@ -102,8 +102,8 @@ impl Rico
                     
                     let dummypc = self.pc;
 
-                    let breakAdr =  0x90e6;
-                    if self.pc == breakAdr
+                    let break_adr =  0x90e6;
+                    if self.pc == break_adr
                     {
                         self.log("Breakpoint hit.".to_string());
                     }
@@ -138,8 +138,8 @@ impl Rico
         // This should do the trick for the PPU - the crappy
         // design decision to represent the PPU as a bit of
         // memory continues to haunt us.
-        let tickRes = self.mem.tick(num_cycles);    
-        match tickRes
+        let tick_res = self.mem.tick(num_cycles);    
+        match tick_res
         {
             MemTickResult::Ok => self.pending_irq = 0,
             MemTickResult::IRQ(__irq) => self.pending_irq = __irq
@@ -563,7 +563,7 @@ mod opcodetests
         r
     }
 
-    fn hasValueAt(cpu: &mut crate::core6502::Rico, adr: u16, val: u8) -> bool
+    fn has_value_at(cpu: &mut crate::core6502::Rico, adr: u16, val: u8) -> bool
     {
         let v = cpu.mem.read_byte(adr as usize).unwrap();
         return v == val;
@@ -892,7 +892,7 @@ mod opcodetests
         cpu.mem.write_byte(0x0001, 0x24);
         cpu.x = 0xFA;
         cpu.execute(1);
-        assert_eq!(true, hasValueAt(&mut cpu, 0x24, 0xFA))
+        assert_eq!(true, has_value_at(&mut cpu, 0x24, 0xFA))
     }
 
 }
