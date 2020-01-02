@@ -127,7 +127,8 @@ impl Rico
                 },
                 Err(_) => {
                      self.print_cpu_state();
-                     panic!("Bad memory location read."); 
+                     self.logger.lock().unwrap().to_console();
+                     panic!("Bad memory location read @ {:#2x}", self.pc); 
                      }
             }
 
@@ -231,10 +232,15 @@ impl Rico
                                      .uses_cycles(1) },
             
             0x09 => { opcode(rc_self).has_mnemonic("ORA #$nn".to_string())
-                                     .loads_immediate()
-                                     .or_with_accumulator()
-                                     .increments_pc(2)
-                                     .uses_cycles(2) },
+                                    .loads_immediate()
+                                    .or_with_accumulator()
+                                    .increments_pc(2)
+                                    .uses_cycles(2) },
+
+            0x0A => { opcode(rc_self).has_mnemonic("ASL".to_string())
+                                    .shifts_accumulator_into_carry()
+                                    .increments_pc(1)
+                                    .uses_cycles(2) },
 
             0x10 => { opcode(rc_self).has_mnemonic("BPL".to_string())
                                      .loads_immediate()
@@ -249,28 +255,40 @@ impl Rico
                                      .uses_cycles(6) },
             
             0x2C => { opcode(rc_self).has_mnemonic("BIT".to_string())
-                            .loads_immediate_16bit()
-                            .performs_bit_test()
-                            .increments_pc(3)
-                            .uses_cycles(4) },
+                                    .loads_immediate_16bit()
+                                    .performs_bit_test()
+                                    .increments_pc(3)
+                                    .uses_cycles(4) },
             
             0x29 => { opcode(rc_self).has_mnemonic("AND#".to_string())
-                .loads_immediate()
-                .and_with_accumulator()
-                .increments_pc(2)
-                .uses_cycles(2) },
+                                    .loads_immediate()
+                                    .and_with_accumulator()
+                                    .increments_pc(2)
+                                    .uses_cycles(2) },
+                
+            0x48 => { opcode(rc_self).has_mnemonic("PHA".to_string())
+                                    .loads_register_u8(RegisterName::A)
+                                    .to_stack()
+                                    .increments_pc(1)
+                                    .uses_cycles(3) },           
+                
+            0x68 => { opcode(rc_self).has_mnemonic("PLA".to_string())
+                                    .loads_from_stack()
+                                    .to(RegisterName::A)
+                                    .increments_pc(1)
+                                    .uses_cycles(4) },
             
             0x4C => { opcode(rc_self).has_mnemonic("JMP".to_string())
-                .loads_immediate_16bit()
-                .jumps_to_address()
-                .increments_pc(0)
-                .uses_cycles(3) },
+                                    .loads_immediate_16bit()
+                                    .jumps_to_address()
+                                    .increments_pc(0)
+                                    .uses_cycles(3) },
             
             0xEE => { opcode(rc_self).has_mnemonic("INC $HHLL".to_string())
-                .loads_immediate_16bit()
-                .increments_address(1)
-                .increments_pc(3)
-                .uses_cycles(6) },
+                                    .loads_immediate_16bit()
+                                    .increments_address(1)
+                                    .increments_pc(3)
+                                    .uses_cycles(6) },
             
             0x60 => { opcode(rc_self).has_mnemonic("RTS".to_string())
                                      .returns_from_subroutine()
@@ -335,7 +353,7 @@ impl Rico
                                     .loads_from_zeropage_indirect_indexed_x()
                                     .adds_to_accumulator()
                                     .increments_pc(2)
-                                    .uses_cycles(6) },
+                                    .uses_cycles(6) },                                    
 
             
             0x71 => { opcode(rc_self).has_mnemonic("ADC($ll),X".to_string())
@@ -373,6 +391,13 @@ impl Rico
                                     .to(RegisterName::X)
                                     .increments_pc(3)
                                     .uses_cycles(4)},
+            0xB1 => { opcode(rc_self).has_mnemonic("LDA ($ll), Y".to_string())
+                                    .loads_indirect(0)                                    
+                                    .to(RegisterName::A)
+                                    .loads_register_u8(RegisterName::Y)
+                                    .adds_to_accumulator()
+                                    .increments_pc(2)
+                                    .uses_cycles(5)},
 
             // Transfer instructions:
             0xAA => {opcode(rc_self).has_mnemonic("TAX".to_string())
@@ -411,7 +436,13 @@ impl Rico
                         .to(RegisterName::X)
                         .increments_pc(3)
                         .uses_cycles(4)
-                    },    
+                    }, 
+            
+            0x90 => {opcode(rc_self).has_mnemonic("BCC".to_string())
+                    .loads_immediate_16bit()
+                    .jumps_relative_if_statusbit(CARRY_MASK, false)
+                    .increments_pc(2)
+                    .uses_cycles(2)},     
 
             0x9A => {opcode(rc_self).has_mnemonic("TXS".to_string())
                         .loads_register_u8(RegisterName::X)

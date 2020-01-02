@@ -169,6 +169,17 @@ impl<'a> LoadResult<'a>
         self.origin
     }
 
+    pub fn to_stack(self) -> Opcode<'a>
+    {
+        let mut cpu = self.origin.cpu.borrow_mut();
+        let write0 = cpu.s as usize;
+        let write1 = (cpu.s - 1) as usize;
+        cpu.mem.write_byte(write0, self.val as u8);
+        cpu.s -= 1;
+        drop(cpu);
+        self.origin
+    }
+
     pub fn jumps_to_address(self) -> Opcode<'a>
     {
         let mut cpu = self.origin.cpu.borrow_mut();
@@ -657,6 +668,17 @@ impl<'a> Opcode<'a>
         self.load_u8_from_mem(load_adr_base)
     }
 
+    pub fn loads_from_stack(self) -> LoadResult<'a>
+    {
+        let sp = self.read_register(RegisterName::S);
+        let mut cpu = self.cpu.borrow_mut();
+        let val = cpu.mem.read_byte(sp as usize).unwrap();
+        cpu.s += 1;
+        drop(cpu);
+
+        LoadResult::new8(val, self)
+    }
+
     pub fn loads_direct_value(self, val: u16) -> LoadResult<'a>
     {
         LoadResult::new16(val, self)
@@ -689,18 +711,39 @@ impl<'a> Opcode<'a>
         {
             //push pc to stack
             let mut cpu = self.cpu.borrow_mut();
-            // let nextpc = cpu.pc + 2;
-            // cpu.pc = self.val;
             let sp = cpu.s;
             let write0 = cpu.mem.read_byte((sp + 1) as usize).unwrap();
             let write1 = cpu.mem.read_byte((sp + 2) as usize).unwrap();
-            // cpu.mem.write_byte(write0, (nextpc & 0xFF) as u8);
-            // cpu.mem.write_byte(write1, ((nextpc & 0xFF00) >> 8) as u8);
             cpu.s += 2;
             let adr = ((write0 as u16) << 8) + write1 as u16;
             cpu.pc = adr;
         }
         
+        self
+    }
+
+
+
+    pub fn shifts_accumulator_into_carry(self) -> Opcode<'a>
+    {
+        let regA  = self.read_register(RegisterName::A);
+        let carryNew = (regA & 0x80) != 0;
+        let regANew = regA << 1;
+        let mut cpu = self.cpu.borrow_mut();
+        
+        if carryNew
+        {
+            cpu.status |= CARRY_MASK;
+        }
+        else
+        {
+            cpu.status &= !CARRY_MASK;
+        }
+
+        cpu.a = regANew;
+
+        drop(cpu);
+
         self
     }
 }

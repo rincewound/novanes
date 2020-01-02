@@ -127,12 +127,13 @@ impl Memory for ppu
 
             if self.line > VISIBLE_SCANLINES
             {
-                if(self.status & VBlankBit) == 0
+                let statusCpy = self.status;
+                self.status |= VBlankBit;                 
+                if(statusCpy & VBlankBit) == 0
                 {
                     // Just entered VBlank, generate NMI.
+                    return MemTickResult::IRQ( 0b001 as u8)
                 }
-                self.status |= VBlankBit; 
-                return MemTickResult::IRQ( 0b001 as u8)
             }
 
         }
