@@ -592,16 +592,20 @@ impl<'a> Opcode<'a>
         self.load_u8_from_mem(load_adr)  
     }
 
+    pub fn loads_indirect_indexed(self, reg: RegisterName) -> LoadResult<'a>
+    {
+        let val = self.read_register(reg);
+        self.loads_indirect(val)   
+    }
+
     pub fn loads_indirect_indexed_x(self) -> LoadResult<'a>
     {
-        let val = self.read_register(RegisterName::X);
-        self.loads_indirect(val)  
+        self.loads_indirect_indexed(RegisterName::X)  
     }
 
     pub fn loads_indirect_indexed_y(self) -> LoadResult<'a>
     {    
-        let val = self.read_register(RegisterName::Y);  
-        self.loads_indirect(val)
+        self.loads_indirect_indexed(RegisterName::Y)  
     }
 
     pub fn loads_from_zeropage(self, offset: u8) -> LoadResult<'a>

@@ -402,10 +402,8 @@ impl Rico
                                     .increments_pc(3)
                                     .uses_cycles(4)},
             0xB1 => { opcode(rc_self).has_mnemonic("LDA ($ll), Y".to_string())
-                                    .loads_indirect(0)                                    
+                                    .loads_indirect_indexed(RegisterName::Y)                                    
                                     .to(RegisterName::A)
-                                    .loads_register_u8(RegisterName::Y)
-                                    .adds_to_accumulator()
                                     .increments_pc(2)
                                     .uses_cycles(5)},
 
@@ -904,5 +902,19 @@ mod opcodetests
         cpu.execute(1);
         assert_eq!(true, has_value_at(&mut cpu, 0x24, 0xFA))
     }
+
+    #[test]
+    fn lda_ll_y()
+    {
+        let mut cpu = setup(0xB1);
+        cpu.mem.write_byte(0x0001, 0x22 );
+        cpu.mem.write_byte(0x0002, 0x77 );
+        cpu.mem.write_byte(0x7732, 15);
+        cpu.a = 0;
+        cpu.y = 0x10;
+        cpu.execute(1);
+        assert_eq!(15, cpu.a)
+    }
+
 
 }

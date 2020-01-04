@@ -13,14 +13,20 @@ const Sprite0Occ: u8  = 0b01000000;
 const ScanSprCnt: u8  = 0b00100000;
 const VRAMWrite: u8   = 0b00010000; 
 
+const VRamAdrIncBit : u8 = 0b00000010;
+
 const pixels_per_tick : u16 = 3;
 
 pub struct ppu
 {
+    ctrl0: u8,
     status: u8,
     line: u16,
     lastpixel: u16,
-    logger: Arc<Mutex<log::logger>>
+    vramadrbyte1: bool,
+    vramadr: u16,
+    vram: [u8; 0x3FFF],
+    logger: Arc<Mutex<log::logger>>    
 }
 
 impl ppu
@@ -28,9 +34,13 @@ impl ppu
     pub fn new(log: Arc<Mutex<log::logger>>) -> Self
     {
         ppu {
+            ctrl0: 0x00,
             status: 0,
             line: 0,
             lastpixel: 0,
+            vramadrbyte1: false,
+            vramadr: 0x000,
+            vram: [0; 0x3FFF],
             logger: log
             }
     }
@@ -51,7 +61,7 @@ impl Memory for ppu
             0x02 => {
                self.log(format!("          PPU.ReadStatus: #({:#02x})", self.status));
                let statuscopy = self.status;
-               self.status &= !VBlankBit;
+               //self.status &= !VBlankBit;
                return Ok(statuscopy)
             },
             _ => {}
@@ -89,10 +99,40 @@ impl Memory for ppu
             },
             0x2006 => {
                 self.log(format!("          PPU.Addr -> {:#2x}", data));
+                let datau16 = data as u16;
+                if !self.vramadrbyte1
+                {
+                    self.vramadr = (self.vramadr & 0xFF00) | datau16 ;                        
+                }
+                else
+                {
+                    let datashift = datau16 << 8;
+                    self.vramadr = (self.vramadr & 0xFF) | datashift;
+                }
+                let logmsg = format!("          PPU.VRAMADR -> {:#2x}", self.vramadr);
+                self.log(logmsg);                
+                self.vramadrbyte1 = !self.vramadrbyte1;
                 return MemError::Ok;
             },
             0x2007 => {
                 self.log(format!("          PPU.Data -> {:#2x}", data));
+                self.log(format!("          PPU.VRAM {:#2x} -> {:#2x}", self.vramadr, data));
+
+                if self.vramadr > 0x3FFF
+                {
+                    self.logger.lock().unwrap().to_console();
+                    panic!("Invalid VRAM access");
+                }
+
+                self.vram[self.vramadr as usize] = data;
+                let increment = if self.ctrl0 & VRamAdrIncBit == 0 { 1 } else { 32 };
+                self.vramadr += increment;
+                if self.vramadr >= 0x3FFF
+                {
+                    self.vramadr -= 0x3FFF;
+                }
+
+
                 return MemError::Ok;
             },
 
@@ -138,5 +178,20 @@ impl Memory for ppu
 
         }
         MemTickResult::Ok        
+    }
+}
+
+#[cfg(test)]
+mod pputests 
+{
+    use crate::ppu::*;
+
+    #[test]
+    pub fn write_data_writes_data_correctly()
+    {
+        let mut p = ppu::new(Arc::new(Mutex::new(log::logger::new())));
+        p.write_byte(0x0006, 0x21);
+        p.write_byte(0x0006, 0x08);
+        assert_eq!(0x2108, p.vramadr);
     }
 }

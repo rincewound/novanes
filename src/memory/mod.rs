@@ -86,8 +86,8 @@ impl Memory for CompositeMemory
         let m = it.find(|x| x.range.begin <= address && x.range.end >= address);
 
         if let Some(m) = m {
-            let err = format!("          {:#4x} -> {:#2x}", address, data);
-            println!("{}", err);
+            //let err = format!("          {:#4x} -> {:#2x}", address, data);
+            //println!("{}", err);
             return m.handler.write_byte(address - m.range.begin, data);
         }
 
