@@ -365,7 +365,7 @@ impl<'a> StoreCommand<'a>
     pub fn to_immediate_address_with_offset(self) -> Opcode<'a>
     {
         panic!("Unimplemented");
-        self.origin
+        //self.origin
     }
 
     pub fn to_zeropage(self) -> Opcode<'a>
@@ -385,7 +385,7 @@ impl<'a> StoreCommand<'a>
     pub fn to_zeropage_with_offset(self) -> Opcode<'a>
     {
         panic!("Unimplemented");
-        self.origin
+        //self.origin
     }
 
     pub fn to_indirect_address(self, indirection: RegisterName) -> Opcode<'a>
@@ -726,6 +726,31 @@ impl<'a> Opcode<'a>
         drop(cpu);
 
         self
+    }
+
+    pub fn rightshift_accumulator_into_carry(self) -> Opcode<'a>
+    {
+        let reg_a  = self.read_register(RegisterName::A);
+        let carry_new = (reg_a & 0x01) != 0;
+        let reg_anew = reg_a >> 1;
+        let mut cpu = self.cpu.borrow_mut();
+        
+        if carry_new
+        {
+            cpu.status |= CARRY_MASK;
+        }
+        else
+        {
+            cpu.status &= !CARRY_MASK;
+        }
+
+        cpu.status &= !ZERO_MASK;
+
+        cpu.a = reg_anew;
+
+        drop(cpu);
+
+        self 
     }
 }
 

@@ -241,6 +241,16 @@ impl Rico
                                     .shifts_accumulator_into_carry()
                                     .increments_pc(1)
                                     .uses_cycles(2) },
+            
+            0x4A => { opcode(rc_self).has_mnemonic("LSR".to_string())
+                                    .rightshift_accumulator_into_carry()
+                                    .increments_pc(1)
+                                    .uses_cycles(2) },
+            
+            0x38 => { opcode(rc_self).has_mnemonic("SEC".to_string())
+                                    .toggles_cpu_bit(CARRY_MASK, true)
+                                    .increments_pc(1)
+                                    .uses_cycles(2) },
 
             0x10 => { opcode(rc_self).has_mnemonic("BPL".to_string())
                                      .loads_immediate()
