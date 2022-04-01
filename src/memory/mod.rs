@@ -37,7 +37,7 @@ pub trait Memory
         //res
     }
 
-    fn tick(&mut self, _clock_ticks: u32) -> MemTickResult{ MemTickResult::Ok }
+    fn tick(&mut self, _clock_ticks: u32) -> MemTickResult;
 }
 
 pub struct RawMemory
@@ -155,6 +155,10 @@ impl Memory for RawMemory
         let err = format!("RawMemory.Write: {:#04x} -> Bad Addr", address);
         println!("{}", err);
         MemError::BadAddress
+    }
+
+    fn tick(&mut self, _clock_ticks: u32) -> MemTickResult {
+        MemTickResult::Ok
     }
 }
 

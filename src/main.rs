@@ -9,11 +9,32 @@ extern crate minifb;
 use minifb::{Key, Window, WindowOptions};
 
 use std::io::{self, BufReader, Read};
-use std::fs::{self, File};
-use std::path::Path;
+use std::fs::{self};
 
 use std::sync::Mutex;
-use std::{slice, sync::Arc, cell::RefCell};
+use std::{slice, sync::Arc, cell::RefCell, rc::Rc};
+
+// Evil hack of doom!
+impl memory::Memory for std::rc::Rc<std::cell::RefCell<memory::CompositeMemory>>
+{
+    fn read_byte(&mut self, address: usize) -> Result<u8, memory::MemError> {
+        (*self.borrow_mut()).read_byte(address)
+    }
+
+    fn write_byte(&mut self, address: usize, data: u8) -> memory::MemError {
+
+        if address == 0x4014
+        {
+            println!("write to SPR-DMA");
+        }
+
+        (*self.borrow_mut()).write_byte(address, data)
+    }
+
+    fn tick(&mut self, _clock_ticks: u32) -> memory::MemTickResult {
+        (*self.borrow_mut()).tick(_clock_ticks)
+    }
+}
 
 struct INESHeader
 {
@@ -69,7 +90,7 @@ const HEIGHT: usize = 240;
 fn make_window() -> Window
 {
 
-    let mut window = Window::new(
+    let window = Window::new(
         "NOVANES - ESC to exit",
         WIDTH,
         HEIGHT,
@@ -94,14 +115,14 @@ fn main()
     load_rom("./roms/smb1.nes".to_string(), &mut m);
     let mut memmap = memory::CompositeMemory::new();
 
-    let memmorycell = Arc::new(RefCell::new(memmap));
-
     // ToDo: Add peripherals as ranges as well.
     memmap.register_range(0x0000, 0x1FFF, Box::new(ram));
     memmap.register_range(0x8000, 0x8000 + 0x8000, Box::new(m));
     memmap.register_range(0x2000, 0x2000 + 0x0008, Box::new(ppu));    
-    memmap.register_range(0x4014, 0x4014, Box::new(dma::SpriteDMA{}));    
-    let mut core = core6502::Rico::new(Box::new(memmap), logger.clone());
+    
+    let memmorycell = Rc::new(RefCell::new(memmap));
+    memmorycell.borrow_mut().register_range(0x4014, 0x4014, Box::new(dma::SpriteDMA::new(memmorycell.clone())));    
+    let mut core = core6502::Rico::new(Box::new(memmorycell.clone()), logger.clone());
 
     while window.is_open() && !window.is_key_down(Key::Escape) 
     {
